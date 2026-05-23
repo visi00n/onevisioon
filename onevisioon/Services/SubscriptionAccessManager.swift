@@ -5,8 +5,8 @@ import StoreKit
 @MainActor
 final class SubscriptionAccessManager: ObservableObject {
     private var updatesTask: Task<Void, Never>?
-    private let billingPreviewMode = true
-    private let testingFullAccessMode = true
+    private let billingPreviewMode = false
+    private let testingFullAccessMode = false
 
     // Update these IDs to match App Store Connect products.
     private let monthlyProductID = "onevisioon.premium.monthly"

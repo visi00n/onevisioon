@@ -27,46 +27,79 @@ final class SoulJourneyStore: ObservableObject {
         static let creativeCheckIns = "ov_creative_check_ins"
         static let creationFeedPosts = "ov_creation_feed_posts"
         static let resetChallengeProgress = "ov_reset_challenge_progress"
+        static let giftDiscoveryProfile = "ov_gift_discovery_profile"
+        static let giftTrainingCheckIns = "ov_gift_training_check_ins"
+        static let glorifyReminderSettings = "ov_glorify_reminder_settings"
+        static let requiresPostPurchaseAccountLink = "ov_requires_post_purchase_account_link"
+        static let completedPostPurchaseAccountLink = "ov_completed_post_purchase_account_link"
     }
 
-    private static let onboardingResetToken = "2026-04-02-onboarding-reset-1"
+    private static let onboardingResetToken = "2026-05-18-onboarding-rebuild-1"
 
     private let defaults = UserDefaults.standard
+    @Published private(set) var cloudSyncRevision = 0
 
     @Published var onboardingCompleted: Bool {
-        didSet { defaults.set(onboardingCompleted, forKey: DefaultsKey.onboardingCompleted) }
+        didSet {
+            defaults.set(onboardingCompleted, forKey: DefaultsKey.onboardingCompleted)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var onboardingProfile: OnboardingAnswerSet {
-        didSet { persist(onboardingProfile, key: DefaultsKey.onboardingProfile) }
+        didSet {
+            persist(onboardingProfile, key: DefaultsKey.onboardingProfile)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var publicProfileSettings: PublicProfileSettings {
-        didSet { persist(publicProfileSettings, key: DefaultsKey.publicProfileSettings) }
+        didSet {
+            persist(publicProfileSettings, key: DefaultsKey.publicProfileSettings)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var wisdomPoints: Int {
-        didSet { defaults.set(wisdomPoints, forKey: DefaultsKey.wisdomPoints) }
+        didSet {
+            defaults.set(wisdomPoints, forKey: DefaultsKey.wisdomPoints)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var lessonProgressMap: [String: LessonProgress] {
-        didSet { persist(lessonProgressMap, key: DefaultsKey.lessonProgressMap) }
+        didSet {
+            persist(lessonProgressMap, key: DefaultsKey.lessonProgressMap)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var questAttempts: [QuestAttempt] {
-        didSet { persist(questAttempts, key: DefaultsKey.questAttempts) }
+        didSet {
+            persist(questAttempts, key: DefaultsKey.questAttempts)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var lessonNotes: [LessonNote] {
-        didSet { persist(lessonNotes, key: DefaultsKey.lessonNotes) }
+        didSet {
+            persist(lessonNotes, key: DefaultsKey.lessonNotes)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var chapterReflections: [ChapterReflection] {
-        didSet { persist(chapterReflections, key: DefaultsKey.chapterReflections) }
+        didSet {
+            persist(chapterReflections, key: DefaultsKey.chapterReflections)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var lessonStudyStepMap: [String: Int] {
-        didSet { persist(lessonStudyStepMap, key: DefaultsKey.lessonStudyStepMap) }
+        didSet {
+            persist(lessonStudyStepMap, key: DefaultsKey.lessonStudyStepMap)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var prayerFeedPosts: [PrayerFeedPost] {
@@ -74,19 +107,31 @@ final class SoulJourneyStore: ObservableObject {
     }
 
     @Published var dailyGrowthEntries: [DailyGrowthEntry] {
-        didSet { persist(dailyGrowthEntries, key: DefaultsKey.dailyGrowthEntries) }
+        didSet {
+            persist(dailyGrowthEntries, key: DefaultsKey.dailyGrowthEntries)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var activityDayKeys: [String] {
-        didSet { persist(activityDayKeys, key: DefaultsKey.activityDayKeys) }
+        didSet {
+            persist(activityDayKeys, key: DefaultsKey.activityDayKeys)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var purchasedStoreItemIDs: Set<String> {
-        didSet { persist(Array(purchasedStoreItemIDs).sorted(), key: DefaultsKey.purchasedStoreItemIDs) }
+        didSet {
+            persist(Array(purchasedStoreItemIDs).sorted(), key: DefaultsKey.purchasedStoreItemIDs)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var likedBibleVerseReferences: Set<String> {
-        didSet { persist(Array(likedBibleVerseReferences).sorted(), key: DefaultsKey.likedBibleVerseReferences) }
+        didSet {
+            persist(Array(likedBibleVerseReferences).sorted(), key: DefaultsKey.likedBibleVerseReferences)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var bibleVerseHighlights: [BibleVerseHighlight] {
@@ -95,11 +140,15 @@ final class SoulJourneyStore: ObservableObject {
                 Self.normalizedBibleVerseHighlights(bibleVerseHighlights),
                 key: DefaultsKey.bibleVerseHighlights
             )
+            markNeedsCloudSync()
         }
     }
 
     @Published var bibleVerseNotes: [BibleVerseNote] {
-        didSet { persist(bibleVerseNotes, key: DefaultsKey.bibleVerseNotes) }
+        didSet {
+            persist(bibleVerseNotes, key: DefaultsKey.bibleVerseNotes)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var onboardingLeadSheet: [OnboardingLeadRecord] {
@@ -107,15 +156,53 @@ final class SoulJourneyStore: ObservableObject {
     }
 
     @Published var creativeCheckIns: [CreativeCheckIn] {
-        didSet { persist(creativeCheckIns, key: DefaultsKey.creativeCheckIns) }
+        didSet {
+            persist(creativeCheckIns, key: DefaultsKey.creativeCheckIns)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var creationFeedPosts: [CreationFeedPost] {
-        didSet { persist(creationFeedPosts, key: DefaultsKey.creationFeedPosts) }
+        didSet {
+            persist(creationFeedPosts, key: DefaultsKey.creationFeedPosts)
+            markNeedsCloudSync()
+        }
+    }
+
+    @Published var giftDiscoveryProfile: GiftDiscoveryProfile? {
+        didSet {
+            if let giftDiscoveryProfile {
+                persist(giftDiscoveryProfile, key: DefaultsKey.giftDiscoveryProfile)
+            } else {
+                defaults.removeObject(forKey: DefaultsKey.giftDiscoveryProfile)
+            }
+            markNeedsCloudSync()
+        }
+    }
+
+    @Published var giftTrainingCheckIns: [GiftTrainingCheckIn] {
+        didSet {
+            persist(giftTrainingCheckIns, key: DefaultsKey.giftTrainingCheckIns)
+            markNeedsCloudSync()
+        }
+    }
+
+    @Published var glorifyReminderSettings: GlorifyReminderSettings? {
+        didSet {
+            if let glorifyReminderSettings {
+                persist(glorifyReminderSettings, key: DefaultsKey.glorifyReminderSettings)
+            } else {
+                defaults.removeObject(forKey: DefaultsKey.glorifyReminderSettings)
+            }
+            markNeedsCloudSync()
+        }
     }
 
     @Published var resetChallengeProgress: ResetChallengeProgress {
-        didSet { persist(resetChallengeProgress.normalized, key: DefaultsKey.resetChallengeProgress) }
+        didSet {
+            persist(resetChallengeProgress.normalized, key: DefaultsKey.resetChallengeProgress)
+            markNeedsCloudSync()
+        }
     }
 
     @Published var lastReadBibleLocation: BibleLocation? {
@@ -125,6 +212,19 @@ final class SoulJourneyStore: ObservableObject {
             } else {
                 defaults.removeObject(forKey: DefaultsKey.lastReadBibleLocation)
             }
+            markNeedsCloudSync()
+        }
+    }
+
+    @Published var requiresPostPurchaseAccountLink: Bool {
+        didSet {
+            defaults.set(requiresPostPurchaseAccountLink, forKey: DefaultsKey.requiresPostPurchaseAccountLink)
+        }
+    }
+
+    @Published var completedPostPurchaseAccountLink: Bool {
+        didSet {
+            defaults.set(completedPostPurchaseAccountLink, forKey: DefaultsKey.completedPostPurchaseAccountLink)
         }
     }
 
@@ -188,11 +288,16 @@ final class SoulJourneyStore: ObservableObject {
         onboardingLeadSheet = Self.loadValue(defaults, key: DefaultsKey.onboardingLeadSheet, as: [OnboardingLeadRecord].self) ?? []
         creativeCheckIns = Self.loadValue(defaults, key: DefaultsKey.creativeCheckIns, as: [CreativeCheckIn].self) ?? []
         creationFeedPosts = Self.loadValue(defaults, key: DefaultsKey.creationFeedPosts, as: [CreationFeedPost].self) ?? []
+        giftDiscoveryProfile = Self.loadValue(defaults, key: DefaultsKey.giftDiscoveryProfile, as: GiftDiscoveryProfile.self)
+        giftTrainingCheckIns = Self.loadValue(defaults, key: DefaultsKey.giftTrainingCheckIns, as: [GiftTrainingCheckIn].self) ?? []
+        glorifyReminderSettings = Self.loadValue(defaults, key: DefaultsKey.glorifyReminderSettings, as: GlorifyReminderSettings.self)
         resetChallengeProgress = (
             Self.loadValue(defaults, key: DefaultsKey.resetChallengeProgress, as: ResetChallengeProgress.self)
             ?? .empty
         ).normalized
         lastReadBibleLocation = Self.loadValue(defaults, key: DefaultsKey.lastReadBibleLocation, as: BibleLocation.self)
+        requiresPostPurchaseAccountLink = defaults.bool(forKey: DefaultsKey.requiresPostPurchaseAccountLink)
+        completedPostPurchaseAccountLink = defaults.bool(forKey: DefaultsKey.completedPostPurchaseAccountLink)
 
         normalizeLessonStudySteps()
         normalizeActivityKeys()
@@ -350,6 +455,28 @@ final class SoulJourneyStore: ObservableObject {
         )
     }
 
+    var giftTrainingStreak: Int {
+        consecutiveDayStreak(
+            for: Set(
+                giftTrainingCheckIns
+                    .filter(\.hasMeaningfulProgress)
+                    .map(\.dayKey)
+            )
+        )
+    }
+
+    var giftTrainingCompletedDayCount: Int {
+        giftTrainingCheckIns.filter(\.hasMeaningfulProgress).count
+    }
+
+    var hasCompletedGiftQuiz: Bool {
+        giftDiscoveryProfile != nil
+    }
+
+    var discoveredGiftKinds: [SpiritualGiftKind] {
+        Array((giftDiscoveryProfile?.orderedGifts ?? []).prefix(3))
+    }
+
     var reflectionCount: Int {
         chapterReflections.count
     }
@@ -422,6 +549,16 @@ final class SoulJourneyStore: ObservableObject {
         upsertOnboardingLeadRecord(using: profile)
     }
 
+    func requirePostPurchaseAccountLink() {
+        guard !completedPostPurchaseAccountLink else { return }
+        requiresPostPurchaseAccountLink = true
+    }
+
+    func completePostPurchaseAccountLink() {
+        requiresPostPurchaseAccountLink = false
+        completedPostPurchaseAccountLink = true
+    }
+
     func applyAuthenticatedIdentity(displayName: String, email: String) {
         var profile = onboardingProfile
         var didChange = false
@@ -488,6 +625,9 @@ final class SoulJourneyStore: ObservableObject {
             bibleVerseNotes: bibleVerseNotes,
             creativeCheckIns: creativeCheckIns,
             creationFeedPosts: creationFeedPosts,
+            giftDiscoveryProfile: giftDiscoveryProfile,
+            giftTrainingCheckIns: giftTrainingCheckIns,
+            glorifyReminderSettings: glorifyReminderSettings,
             resetChallengeProgress: resetChallengeProgress,
             lastReadBibleLocation: lastReadBibleLocation
         )
@@ -511,6 +651,9 @@ final class SoulJourneyStore: ObservableObject {
         bibleVerseNotes = snapshot.bibleVerseNotes
         creativeCheckIns = snapshot.creativeCheckIns
         creationFeedPosts = snapshot.creationFeedPosts
+        giftDiscoveryProfile = snapshot.giftDiscoveryProfile
+        giftTrainingCheckIns = snapshot.giftTrainingCheckIns ?? []
+        glorifyReminderSettings = snapshot.glorifyReminderSettings
         resetChallengeProgress = snapshot.resetChallengeProgress ?? .empty
         lastReadBibleLocation = snapshot.lastReadBibleLocation
         upsertOnboardingLeadRecord(using: snapshot.onboardingProfile)
@@ -762,6 +905,102 @@ final class SoulJourneyStore: ObservableObject {
         return creativeCheckIns.first(where: { $0.dayKey == key }) ?? CreativeCheckIn(dayKey: key)
     }
 
+    func completeGiftQuiz(answers: [String: String], completedAt: Date = .now) {
+        markActiveToday()
+        giftTrainingCheckIns = []
+        giftDiscoveryProfile = GiftDiscoveryCatalog.buildProfile(from: answers, completedAt: completedAt)
+        upsertOnboardingLeadRecord()
+    }
+
+    func resetGiftDiscovery() {
+        giftDiscoveryProfile = nil
+        giftTrainingCheckIns = []
+    }
+
+    func giftTrainingCheckIn(for date: Date = .now) -> GiftTrainingCheckIn {
+        let key = dayKey(for: date)
+        return giftTrainingCheckIns.first(where: { $0.dayKey == key }) ?? GiftTrainingCheckIn(dayKey: key)
+    }
+
+    var hasGiftClockedInToday: Bool {
+        giftTrainingCheckIn().isClockedIn
+    }
+
+    func clockInToGiftTraining(for date: Date = .now) {
+        markActiveToday()
+        var checkIn = giftTrainingCheckIn(for: date)
+        if checkIn.clockedInAt == nil {
+            checkIn.clockedInAt = .now
+        }
+        checkIn.updatedAt = .now
+        upsertGiftTrainingCheckIn(checkIn)
+    }
+
+    func toggleGiftHabit(_ habitID: String, on date: Date = .now) {
+        markActiveToday()
+        var checkIn = giftTrainingCheckIn(for: date)
+        if checkIn.clockedInAt == nil {
+            checkIn.clockedInAt = .now
+        }
+        var habits = Set(checkIn.completedHabitIDs)
+
+        if habits.contains(habitID) {
+            habits.remove(habitID)
+        } else {
+            habits.insert(habitID)
+        }
+
+        checkIn.completedHabitIDs = habits.sorted()
+        checkIn.updatedAt = .now
+        upsertGiftTrainingCheckIn(checkIn)
+    }
+
+    @discardableResult
+    func saveGiftTrainingReflection(_ text: String, on date: Date = .now) -> Bool {
+        let cleaned = text.trimmed
+        guard !cleaned.isEmpty else { return false }
+        markActiveToday()
+
+        var checkIn = giftTrainingCheckIn(for: date)
+        if checkIn.clockedInAt == nil {
+            checkIn.clockedInAt = .now
+        }
+        checkIn.reflection = cleaned
+        checkIn.updatedAt = .now
+        upsertGiftTrainingCheckIn(checkIn)
+        return true
+    }
+
+    func saveGlorifyReminderSettings(_ settings: GlorifyReminderSettings?) {
+        glorifyReminderSettings = settings
+    }
+
+    func isGiftHabitCompleted(_ habitID: String, on date: Date = .now) -> Bool {
+        giftTrainingCheckIn(for: date).completedHabitIDs.contains(habitID)
+    }
+
+    func giftHabitCompletionCount(for gift: SpiritualGiftKind, lastDays: Int = 7) -> Int {
+        let habitIDs = Set(gift.habits.map(\.id))
+        guard !habitIDs.isEmpty else { return 0 }
+
+        let keys = recentDayKeys(count: lastDays)
+        return giftTrainingCheckIns
+            .filter { keys.contains($0.dayKey) }
+            .reduce(0) { partial, checkIn in
+                partial + checkIn.completedHabitIDs.filter { habitIDs.contains($0) }.count
+            }
+    }
+
+    func giftActiveDayCount(for gift: SpiritualGiftKind, lastDays: Int = 7) -> Int {
+        let habitIDs = Set(gift.habits.map(\.id))
+        guard !habitIDs.isEmpty else { return 0 }
+
+        let keys = recentDayKeys(count: lastDays)
+        return giftTrainingCheckIns.filter { checkIn in
+            keys.contains(checkIn.dayKey) && checkIn.completedHabitIDs.contains(where: { habitIDs.contains($0) })
+        }.count
+    }
+
     func toggleCreativeHabit(_ habit: CreativeHabit, on date: Date = .now) {
         markActiveToday()
         var checkIn = creativeCheckIn(for: date)
@@ -902,6 +1141,55 @@ final class SoulJourneyStore: ObservableObject {
         let cleaned = normalizeUsername(onboardingProfile.username)
         if cleaned.isEmpty { return "@onevisioon" }
         return "@\(cleaned)"
+    }
+
+    var usesUnitedStatesLocalGroup: Bool {
+        let normalized = onboardingProfile.country.trimmed.lowercased()
+        return normalized == "united states" || normalized == "united states of america" || normalized == "usa" || normalized == "us"
+    }
+
+    var preferredSmallGroupName: String {
+        if !onboardingProfile.spiritualStruggle.trimmed.isEmpty {
+            return onboardingProfile.spiritualStruggle.trimmed
+        }
+
+        if let first = onboardingProfile.currentStruggles.first(where: { !$0.trimmed.isEmpty }) {
+            return first.trimmed
+        }
+
+        if !onboardingProfile.faithStage.trimmed.isEmpty {
+            return onboardingProfile.faithStage.trimmed
+        }
+
+        return "Growth"
+    }
+
+    var preferredSmallGroupKey: String {
+        "small-\(slugify(preferredSmallGroupName))"
+    }
+
+    var localCommunityTitle: String {
+        if usesUnitedStatesLocalGroup, !onboardingProfile.usaAreaCode.trimmed.isEmpty {
+            return onboardingProfile.usaAreaCode.trimmed
+        }
+
+        if !onboardingProfile.country.trimmed.isEmpty {
+            return onboardingProfile.country.trimmed
+        }
+
+        return "Local"
+    }
+
+    var localCommunityKey: String {
+        if usesUnitedStatesLocalGroup, !onboardingProfile.usaAreaCode.trimmed.isEmpty {
+            return "local-us-\(onboardingProfile.usaAreaCode.trimmed)"
+        }
+
+        if !onboardingProfile.country.trimmed.isEmpty {
+            return "local-\(slugify(onboardingProfile.country))"
+        }
+
+        return "local-general"
     }
 
     func saveLastReadBibleLocation(_ location: BibleLocation) {
@@ -1139,6 +1427,22 @@ final class SoulJourneyStore: ObservableObject {
         }
     }
 
+    private func upsertGiftTrainingCheckIn(_ checkIn: GiftTrainingCheckIn) {
+        if let existingIndex = giftTrainingCheckIns.firstIndex(where: { $0.dayKey == checkIn.dayKey }) {
+            giftTrainingCheckIns[existingIndex] = checkIn
+        } else {
+            giftTrainingCheckIns.append(checkIn)
+        }
+    }
+
+    private func recentDayKeys(count: Int) -> Set<String> {
+        guard count > 0 else { return [] }
+
+        return Set((0..<count).compactMap { offset in
+            calendar.date(byAdding: .day, value: -offset, to: .now).map(dayKey(for:))
+        })
+    }
+
     private func creationFeedAttachmentsDirectory() -> URL? {
         guard let root = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             return nil
@@ -1197,7 +1501,29 @@ final class SoulJourneyStore: ObservableObject {
             fullName: profile.fullName.trimmed,
             username: profile.username.trimmed,
             email: profile.email.trimmed,
+            age: profile.age.trimmed,
+            country: profile.country.trimmed,
+            usaAreaCode: profile.usaAreaCode.trimmed,
+            gender: profile.gender,
             faithStage: profile.faithStage,
+            currentSeason: profile.currentSeason,
+            currentStruggles: profile.currentStruggles,
+            lifeVision: profile.lifeVision,
+            desiredGrowth: profile.desiredGrowth,
+            behindArea: profile.behindArea,
+            ifNothingChangesFeeling: profile.ifNothingChangesFeeling,
+            futureStrength: profile.futureStrength,
+            supportNeed: profile.supportNeed,
+            spiritualStruggle: profile.spiritualStruggle,
+            readinessResponse: profile.readinessResponse,
+            wantsNotifications: profile.wantsNotifications,
+            referralCode: profile.referralCode.trimmed,
+            heardAboutSource: profile.heardAboutSource,
+            selectedMindsetGoal: profile.selectedMindsetGoal,
+            selectedHealthGoal: profile.selectedHealthGoal,
+            selectedPurposeGoal: profile.selectedPurposeGoal,
+            selectedCommunityGoal: profile.selectedCommunityGoal,
+            onboardingPotentialScore: profile.onboardingPotentialScore,
             selectedVersion: profile.selectedVersion,
             selectedPremiumPlan: profile.selectedPremiumPlan,
             currentStreak: currentStreak,
@@ -1219,6 +1545,8 @@ final class SoulJourneyStore: ObservableObject {
 
         onboardingProfile = .empty
         onboardingCompleted = false
+        requiresPostPurchaseAccountLink = false
+        completedPostPurchaseAccountLink = false
         defaults.set(Self.onboardingResetToken, forKey: DefaultsKey.onboardingResetMarker)
     }
 
@@ -1227,10 +1555,22 @@ final class SoulJourneyStore: ObservableObject {
         return try? JSONDecoder().decode(type, from: data)
     }
 
+    private func markNeedsCloudSync() {
+        cloudSyncRevision &+= 1
+    }
+
     private func normalizeUsername(_ value: String) -> String {
         let lowered = value.trimmed.lowercased()
         let allowed = lowered.filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "." }
         return allowed.replacingOccurrences(of: "@", with: "")
+    }
+
+    private func slugify(_ value: String) -> String {
+        let lowered = value.trimmed.lowercased()
+        let pieces = lowered
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+        return pieces.joined(separator: "-")
     }
 
     private var calendar: Calendar {

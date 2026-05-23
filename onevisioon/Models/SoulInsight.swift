@@ -4,6 +4,10 @@ struct OnboardingAnswerSet: Codable, Hashable {
     var fullName: String
     var username: String
     var email: String
+    var age: String
+    var country: String
+    var usaAreaCode: String
+    var gender: String
     var faithStage: String
     var biggestChallenge: String
     var scriptureRhythm: String
@@ -13,11 +17,33 @@ struct OnboardingAnswerSet: Codable, Hashable {
     var reminderWindow: String
     var selectedVersion: String
     var selectedPremiumPlan: String
+    var currentSeason: String
+    var currentStruggles: [String]
+    var lifeVision: String
+    var desiredGrowth: String
+    var behindArea: String
+    var ifNothingChangesFeeling: String
+    var futureStrength: String
+    var supportNeed: String
+    var spiritualStruggle: String
+    var readinessResponse: String
+    var wantsNotifications: Bool
+    var referralCode: String
+    var heardAboutSource: String
+    var selectedMindsetGoal: String
+    var selectedHealthGoal: String
+    var selectedPurposeGoal: String
+    var selectedCommunityGoal: String
+    var onboardingPotentialScore: Int
 
     static let empty = OnboardingAnswerSet(
         fullName: "",
         username: "",
         email: "",
+        age: "",
+        country: "",
+        usaAreaCode: "",
+        gender: "",
         faithStage: "",
         biggestChallenge: "",
         scriptureRhythm: "",
@@ -26,8 +52,211 @@ struct OnboardingAnswerSet: Codable, Hashable {
         weeklyCommitment: "",
         reminderWindow: "",
         selectedVersion: "",
-        selectedPremiumPlan: ""
+        selectedPremiumPlan: "",
+        currentSeason: "",
+        currentStruggles: [],
+        lifeVision: "",
+        desiredGrowth: "",
+        behindArea: "",
+        ifNothingChangesFeeling: "",
+        futureStrength: "",
+        supportNeed: "",
+        spiritualStruggle: "",
+        readinessResponse: "",
+        wantsNotifications: false,
+        referralCode: "",
+        heardAboutSource: "",
+        selectedMindsetGoal: "",
+        selectedHealthGoal: "",
+        selectedPurposeGoal: "",
+        selectedCommunityGoal: "",
+        onboardingPotentialScore: 0
     )
+
+    init(
+        fullName: String,
+        username: String,
+        email: String,
+        age: String,
+        country: String,
+        usaAreaCode: String,
+        gender: String,
+        faithStage: String,
+        biggestChallenge: String,
+        scriptureRhythm: String,
+        prayerRhythm: String,
+        learningStyle: String,
+        weeklyCommitment: String,
+        reminderWindow: String,
+        selectedVersion: String,
+        selectedPremiumPlan: String,
+        currentSeason: String,
+        currentStruggles: [String],
+        lifeVision: String,
+        desiredGrowth: String,
+        behindArea: String,
+        ifNothingChangesFeeling: String,
+        futureStrength: String,
+        supportNeed: String,
+        spiritualStruggle: String,
+        readinessResponse: String,
+        wantsNotifications: Bool,
+        referralCode: String,
+        heardAboutSource: String,
+        selectedMindsetGoal: String,
+        selectedHealthGoal: String,
+        selectedPurposeGoal: String,
+        selectedCommunityGoal: String,
+        onboardingPotentialScore: Int
+    ) {
+        self.fullName = fullName
+        self.username = username
+        self.email = email
+        self.age = age
+        self.country = country
+        self.usaAreaCode = usaAreaCode
+        self.gender = gender
+        self.faithStage = faithStage
+        self.biggestChallenge = biggestChallenge
+        self.scriptureRhythm = scriptureRhythm
+        self.prayerRhythm = prayerRhythm
+        self.learningStyle = learningStyle
+        self.weeklyCommitment = weeklyCommitment
+        self.reminderWindow = reminderWindow
+        self.selectedVersion = selectedVersion
+        self.selectedPremiumPlan = selectedPremiumPlan
+        self.currentSeason = currentSeason
+        self.currentStruggles = currentStruggles
+        self.lifeVision = lifeVision
+        self.desiredGrowth = desiredGrowth
+        self.behindArea = behindArea
+        self.ifNothingChangesFeeling = ifNothingChangesFeeling
+        self.futureStrength = futureStrength
+        self.supportNeed = supportNeed
+        self.spiritualStruggle = spiritualStruggle
+        self.readinessResponse = readinessResponse
+        self.wantsNotifications = wantsNotifications
+        self.referralCode = referralCode
+        self.heardAboutSource = heardAboutSource
+        self.selectedMindsetGoal = selectedMindsetGoal
+        self.selectedHealthGoal = selectedHealthGoal
+        self.selectedPurposeGoal = selectedPurposeGoal
+        self.selectedCommunityGoal = selectedCommunityGoal
+        self.onboardingPotentialScore = onboardingPotentialScore
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case fullName
+        case username
+        case email
+        case age
+        case country
+        case usaAreaCode
+        case gender
+        case faithStage
+        case biggestChallenge
+        case scriptureRhythm
+        case prayerRhythm
+        case learningStyle
+        case weeklyCommitment
+        case reminderWindow
+        case selectedVersion
+        case selectedPremiumPlan
+        case currentSeason
+        case currentStruggles
+        case lifeVision
+        case desiredGrowth
+        case behindArea
+        case ifNothingChangesFeeling
+        case futureStrength
+        case supportNeed
+        case spiritualStruggle
+        case readinessResponse
+        case wantsNotifications
+        case referralCode
+        case heardAboutSource
+        case selectedMindsetGoal
+        case selectedHealthGoal
+        case selectedPurposeGoal
+        case selectedCommunityGoal
+        case onboardingPotentialScore
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        fullName = try container.decodeIfPresent(String.self, forKey: .fullName) ?? ""
+        username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
+        email = try container.decodeIfPresent(String.self, forKey: .email) ?? ""
+        age = try container.decodeIfPresent(String.self, forKey: .age) ?? ""
+        country = try container.decodeIfPresent(String.self, forKey: .country) ?? ""
+        usaAreaCode = try container.decodeIfPresent(String.self, forKey: .usaAreaCode) ?? ""
+        gender = try container.decodeIfPresent(String.self, forKey: .gender) ?? ""
+        faithStage = try container.decodeIfPresent(String.self, forKey: .faithStage) ?? ""
+        biggestChallenge = try container.decodeIfPresent(String.self, forKey: .biggestChallenge) ?? ""
+        scriptureRhythm = try container.decodeIfPresent(String.self, forKey: .scriptureRhythm) ?? ""
+        prayerRhythm = try container.decodeIfPresent(String.self, forKey: .prayerRhythm) ?? ""
+        learningStyle = try container.decodeIfPresent(String.self, forKey: .learningStyle) ?? ""
+        weeklyCommitment = try container.decodeIfPresent(String.self, forKey: .weeklyCommitment) ?? ""
+        reminderWindow = try container.decodeIfPresent(String.self, forKey: .reminderWindow) ?? ""
+        selectedVersion = try container.decodeIfPresent(String.self, forKey: .selectedVersion) ?? ""
+        selectedPremiumPlan = try container.decodeIfPresent(String.self, forKey: .selectedPremiumPlan) ?? ""
+        currentSeason = try container.decodeIfPresent(String.self, forKey: .currentSeason) ?? ""
+        currentStruggles = try container.decodeIfPresent([String].self, forKey: .currentStruggles) ?? []
+        lifeVision = try container.decodeIfPresent(String.self, forKey: .lifeVision) ?? ""
+        desiredGrowth = try container.decodeIfPresent(String.self, forKey: .desiredGrowth) ?? ""
+        behindArea = try container.decodeIfPresent(String.self, forKey: .behindArea) ?? ""
+        ifNothingChangesFeeling = try container.decodeIfPresent(String.self, forKey: .ifNothingChangesFeeling) ?? ""
+        futureStrength = try container.decodeIfPresent(String.self, forKey: .futureStrength) ?? ""
+        supportNeed = try container.decodeIfPresent(String.self, forKey: .supportNeed) ?? ""
+        spiritualStruggle = try container.decodeIfPresent(String.self, forKey: .spiritualStruggle) ?? ""
+        readinessResponse = try container.decodeIfPresent(String.self, forKey: .readinessResponse) ?? ""
+        wantsNotifications = try container.decodeIfPresent(Bool.self, forKey: .wantsNotifications) ?? false
+        referralCode = try container.decodeIfPresent(String.self, forKey: .referralCode) ?? ""
+        heardAboutSource = try container.decodeIfPresent(String.self, forKey: .heardAboutSource) ?? ""
+        selectedMindsetGoal = try container.decodeIfPresent(String.self, forKey: .selectedMindsetGoal) ?? ""
+        selectedHealthGoal = try container.decodeIfPresent(String.self, forKey: .selectedHealthGoal) ?? ""
+        selectedPurposeGoal = try container.decodeIfPresent(String.self, forKey: .selectedPurposeGoal) ?? ""
+        selectedCommunityGoal = try container.decodeIfPresent(String.self, forKey: .selectedCommunityGoal) ?? ""
+        onboardingPotentialScore = try container.decodeIfPresent(Int.self, forKey: .onboardingPotentialScore) ?? 0
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(fullName, forKey: .fullName)
+        try container.encode(username, forKey: .username)
+        try container.encode(email, forKey: .email)
+        try container.encode(age, forKey: .age)
+        try container.encode(country, forKey: .country)
+        try container.encode(usaAreaCode, forKey: .usaAreaCode)
+        try container.encode(gender, forKey: .gender)
+        try container.encode(faithStage, forKey: .faithStage)
+        try container.encode(biggestChallenge, forKey: .biggestChallenge)
+        try container.encode(scriptureRhythm, forKey: .scriptureRhythm)
+        try container.encode(prayerRhythm, forKey: .prayerRhythm)
+        try container.encode(learningStyle, forKey: .learningStyle)
+        try container.encode(weeklyCommitment, forKey: .weeklyCommitment)
+        try container.encode(reminderWindow, forKey: .reminderWindow)
+        try container.encode(selectedVersion, forKey: .selectedVersion)
+        try container.encode(selectedPremiumPlan, forKey: .selectedPremiumPlan)
+        try container.encode(currentSeason, forKey: .currentSeason)
+        try container.encode(currentStruggles, forKey: .currentStruggles)
+        try container.encode(lifeVision, forKey: .lifeVision)
+        try container.encode(desiredGrowth, forKey: .desiredGrowth)
+        try container.encode(behindArea, forKey: .behindArea)
+        try container.encode(ifNothingChangesFeeling, forKey: .ifNothingChangesFeeling)
+        try container.encode(futureStrength, forKey: .futureStrength)
+        try container.encode(supportNeed, forKey: .supportNeed)
+        try container.encode(spiritualStruggle, forKey: .spiritualStruggle)
+        try container.encode(readinessResponse, forKey: .readinessResponse)
+        try container.encode(wantsNotifications, forKey: .wantsNotifications)
+        try container.encode(referralCode, forKey: .referralCode)
+        try container.encode(heardAboutSource, forKey: .heardAboutSource)
+        try container.encode(selectedMindsetGoal, forKey: .selectedMindsetGoal)
+        try container.encode(selectedHealthGoal, forKey: .selectedHealthGoal)
+        try container.encode(selectedPurposeGoal, forKey: .selectedPurposeGoal)
+        try container.encode(selectedCommunityGoal, forKey: .selectedCommunityGoal)
+        try container.encode(onboardingPotentialScore, forKey: .onboardingPotentialScore)
+    }
 }
 
 struct PublicProfileSettings: Codable, Hashable {

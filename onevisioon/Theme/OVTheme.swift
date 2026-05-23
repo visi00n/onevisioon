@@ -19,6 +19,10 @@ enum OVTheme {
     static let cardBackground = Color.white.opacity(0.94)
     static let elevatedCard = Color.white.opacity(0.98)
     static let tabBarBackground = paper
+    static let screenHorizontalPadding: CGFloat = 20
+    static let screenVerticalPadding: CGFloat = 12
+    static let cardSpacing: CGFloat = 12
+    static let cardPadding: CGFloat = 16
 
     static let mainBackground = LinearGradient(
         colors: [paper, sand.opacity(0.9), mist.opacity(0.82)],
@@ -36,6 +40,39 @@ enum OVTheme {
 
     static func body(_ size: CGFloat) -> Font {
         .custom("AvenirNext-Regular", size: size)
+    }
+}
+
+struct PremiumSurfaceCardModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    let fill: Color
+    let shadowOpacity: Double
+
+    func body(content: Content) -> some View {
+        content
+            .background(fill)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(OVTheme.line, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .shadow(color: .black.opacity(shadowOpacity), radius: 18, y: 8)
+    }
+}
+
+extension View {
+    func premiumSurfaceCard(
+        cornerRadius: CGFloat = 24,
+        fill: Color = OVTheme.cardBackground,
+        shadowOpacity: Double = 0.055
+    ) -> some View {
+        modifier(
+            PremiumSurfaceCardModifier(
+                cornerRadius: cornerRadius,
+                fill: fill,
+                shadowOpacity: shadowOpacity
+            )
+        )
     }
 }
 

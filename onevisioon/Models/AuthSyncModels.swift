@@ -20,8 +20,11 @@ struct UserProgressSyncSnapshot: Codable, Hashable {
     let bibleVerseNotes: [BibleVerseNote]
     let creativeCheckIns: [CreativeCheckIn]
     let creationFeedPosts: [CreationFeedPost]
+    let giftDiscoveryProfile: GiftDiscoveryProfile?
+    let giftTrainingCheckIns: [GiftTrainingCheckIn]?
+    let glorifyReminderSettings: GlorifyReminderSettings?
     let resetChallengeProgress: ResetChallengeProgress?
     let lastReadBibleLocation: BibleLocation?
 
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 4
 }

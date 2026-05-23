@@ -9,6 +9,7 @@ struct CourseView: View {
     @State private var showDailyCheckInForm = false
     @State private var showDailyCheckInCompletedState = false
     @State private var showStreakCalendarSheet = false
+    @State private var streakCalendarDetent: PresentationDetent = .large
     @State private var showContent = false
 
     var body: some View {
@@ -37,6 +38,7 @@ struct CourseView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
+                        streakCalendarDetent = .large
                         showStreakCalendarSheet = true
                     } label: {
                         HStack(spacing: 6) {
@@ -69,7 +71,7 @@ struct CourseView: View {
             }
             .sheet(isPresented: $showStreakCalendarSheet) {
                 StreakCalendarSheetView(store: store)
-                    .presentationDetents([.fraction(0.6), .large])
+                    .presentationDetents([.fraction(0.6), .large], selection: $streakCalendarDetent)
                     .presentationDragIndicator(.visible)
             }
             .onAppear {
@@ -858,7 +860,8 @@ struct StreakCalendarSheetView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.top, 30)
+        .padding(.bottom, 16)
         .background(OVTheme.mainBackground.ignoresSafeArea())
     }
 }

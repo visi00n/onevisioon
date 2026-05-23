@@ -3,14 +3,12 @@ import UIKit
 
 struct ScriptureHomeView: View {
     @ObservedObject var store: SoulJourneyStore
-    @ObservedObject var accessManager: SubscriptionAccessManager
     let openGlorifyGifts: () -> Void
 
     @State private var showStreakCalendarSheet = false
     @State private var showBibleNotesSheet = false
-    @State private var showDailyVerseShareSheet = false
-    @State private var dailyVerseShareURL: URL?
-    @State private var dailyVerseShareFallbackText = ""
+    @State private var dailyVerseSharePayload: DailyVerseSharePayload?
+    @State private var streakCalendarDetent: PresentationDetent = .large
 
     private var continueLocation: BibleLocation {
         store.continueBibleLocation
@@ -20,16 +18,11 @@ struct ScriptureHomeView: View {
         BibleDataProvider.dailyVerse()
     }
 
-    private var totalChapterCount: Int {
-        BibleDataProvider.books.reduce(0) { $0 + $1.chapterCount }
-    }
-
     private var readingPlan: ReadingRecommendationPlan {
         ReadingRecommendationPlan.build(
             profile: store.onboardingProfile,
             lastReadLocation: store.lastReadBibleLocation,
             reflectionStreak: store.currentReflectionStreak,
-            completedLessons: store.completedLessonsAcrossAllCourses,
             date: .now
         )
     }
@@ -38,25 +31,34 @@ struct ScriptureHomeView: View {
         LifeSituationGuide.recommended(for: store.onboardingProfile)
     }
 
+    private var dailyGiftFocus: GiftDailyFocus? {
+        guard let profile = store.giftDiscoveryProfile else { return nil }
+        return GiftDiscoveryCatalog.todayFocus(
+            for: profile,
+            progressDays: store.giftTrainingCompletedDayCount
+        )
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 16) {
+                LazyVStack(spacing: OVTheme.cardSpacing) {
                     if let dailyVerse {
                         dailyVerseCard(dailyVerse)
-                        whereShouldIReadCard(readingPlan)
+                        quickAccessGrid
+                        howToPrayCard
                         iFeelCard
-                        resetWithGodCard
+                        whereShouldIReadCard(readingPlan)
+                        if let dailyGiftFocus {
+                            giftFocusCard(dailyGiftFocus)
+                        } else {
+                            discoverGiftsCard
+                        }
                         lifeSituationGuidesCard
-                        discoverGiftsCard
                     }
-
-                    quickAccessGrid
-                    growthSnapshotCard
-                    bibleOverviewCard
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                .padding(.horizontal, OVTheme.screenHorizontalPadding)
+                .padding(.vertical, OVTheme.screenVerticalPadding)
             }
             .background(OVTheme.mainBackground.ignoresSafeArea())
             .navigationTitle("Home")
@@ -64,6 +66,7 @@ struct ScriptureHomeView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
+                        streakCalendarDetent = .large
                         showStreakCalendarSheet = true
                     } label: {
                         HStack(spacing: 6) {
@@ -94,16 +97,16 @@ struct ScriptureHomeView: View {
             }
             .sheet(isPresented: $showStreakCalendarSheet) {
                 StreakCalendarSheetView(store: store)
-                    .presentationDetents([.fraction(0.6), .large])
+                    .presentationDetents([.fraction(0.6), .large], selection: $streakCalendarDetent)
                     .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showBibleNotesSheet) {
                 BibleVerseNotesSheet(store: store)
             }
-            .sheet(isPresented: $showDailyVerseShareSheet, onDismiss: {
-                dailyVerseShareURL = nil
-            }) {
-                ActivityShareSheet(activityItems: dailyVerseShareItems)
+            .sheet(item: $dailyVerseSharePayload, onDismiss: {
+                cleanupDailyVerseSharePayload()
+            }) { payload in
+                ActivityShareSheet(activityItems: payload.activityItems)
             }
         }
     }
@@ -116,7 +119,7 @@ struct ScriptureHomeView: View {
                         .font(OVTheme.heading(20))
                         .foregroundStyle(OVTheme.ink)
 
-                    Text("Tap what feels most honest right now, then let the app point you to verses, a lesson, and a prayer.")
+                    Text("Tap what feels most honest right now, then let the app point you to verses, a guide, and a prayer.")
                         .font(OVTheme.body(14))
                         .foregroundStyle(OVTheme.muted)
                 }
@@ -144,7 +147,6 @@ struct ScriptureHomeView: View {
                     NavigationLink {
                         FeelingResponseView(
                             store: store,
-                            accessManager: accessManager,
                             shortcut: feeling
                         )
                     } label: {
@@ -165,224 +167,136 @@ struct ScriptureHomeView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
+        .padding(OVTheme.cardPadding)
         .ovSurfaceCard(cornerRadius: 24)
     }
 
     private var lifeSituationGuidesCard: some View {
-        NavigationLink {
-            LifeSituationGuideLibraryView(store: store)
-        } label: {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(featuredSituationGuide.accent.opacity(0.22))
-                            .frame(width: 48, height: 48)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(featuredSituationGuide.accent.opacity(0.22))
+                        .frame(width: 48, height: 48)
 
-                        Image(systemName: "heart.text.square")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(OVTheme.midnight)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Life situation study guides")
-                            .font(OVTheme.heading(20))
-                            .foregroundStyle(OVTheme.ink)
-
-                        Text("When you feel anxious, far from God, stuck in sin, alone, angry, or in need of purpose, start with a guide built for that moment.")
-                            .font(OVTheme.body(14))
-                            .foregroundStyle(OVTheme.muted)
-                    }
+                    Image(systemName: "heart.text.square")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(OVTheme.midnight)
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Life situation study guides")
+                        .font(OVTheme.heading(20))
+                        .foregroundStyle(OVTheme.ink)
+
+                    Text("If life feels heavy, this gives you a simple place to start with Scripture, prayer, and one clear next step.")
+                        .font(OVTheme.body(14))
+                        .foregroundStyle(OVTheme.muted)
+                }
+            }
+
+            NavigationLink {
+                LifeSituationGuideDetailView(store: store, guide: featuredSituationGuide)
+            } label: {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 7) {
                         Text(store.onboardingProfile.biggestChallenge.trimmed.isEmpty ? "Start here" : "Recommended for you")
                             .font(OVTheme.body(11))
-                            .foregroundStyle(OVTheme.gold)
-
-                        Spacer()
-
-                        Text("\(LifeSituationGuide.all.count) guides")
-                            .font(OVTheme.body(11))
                             .foregroundStyle(OVTheme.midnight)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(OVTheme.gold.opacity(0.18))
+                            .overlay(
+                                Capsule()
+                                    .stroke(OVTheme.gold.opacity(0.55), lineWidth: 1)
+                            )
+                            .clipShape(Capsule())
+
+                        Text(featuredSituationGuide.title)
+                            .font(OVTheme.heading(17))
+                            .foregroundStyle(OVTheme.midnight)
+
+                        Text(featuredSituationGuide.subtitle)
+                            .font(OVTheme.body(13))
+                            .foregroundStyle(OVTheme.ink.opacity(0.76))
+                            .lineLimit(2)
                     }
 
-                    Text(featuredSituationGuide.title)
-                        .font(OVTheme.heading(18))
-                        .foregroundStyle(OVTheme.midnight)
-
-                    Text(featuredSituationGuide.subtitle)
-                        .font(OVTheme.body(14))
-                        .foregroundStyle(OVTheme.ink.opacity(0.76))
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(featuredSituationGuide.accent.opacity(0.12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(OVTheme.line, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-
-                HStack(spacing: 10) {
-                    homeStatChip("Chapters", "\(LifeSituationGuide.totalChapterCount)")
-                    homeStatChip("Includes", "Prayer")
-                    homeStatChip("Includes", "Action step")
-
-                    Spacer()
+                    Spacer(minLength: 10)
 
                     Image(systemName: "arrow.right")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(OVTheme.midnight)
+                        .frame(width: 34, height: 34)
+                        .background(OVTheme.gold.opacity(0.28))
+                        .clipShape(Circle())
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(OVTheme.lemon.opacity(0.38))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(OVTheme.gold.opacity(0.92), lineWidth: 1.7)
+                )
+                .shadow(color: OVTheme.gold.opacity(0.16), radius: 10, x: 0, y: 5)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18)
-            .ovSurfaceCard(cornerRadius: 24)
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .ovSurfaceCard(cornerRadius: 24)
     }
 
     private func whereShouldIReadCard(_ plan: ReadingRecommendationPlan) -> some View {
-        NavigationLink {
-            WhereShouldIReadTodayView(
-                store: store,
-                accessManager: accessManager,
-                plan: plan
-            )
-        } label: {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Where should I read today?")
-                            .font(OVTheme.heading(20))
-                            .foregroundStyle(OVTheme.ink)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Where should I read today?")
+                .font(OVTheme.heading(20))
+                .foregroundStyle(OVTheme.ink)
 
-                        Text("Smart recommendation from your season, progress, and what you told us in onboarding.")
-                            .font(OVTheme.body(12))
-                            .foregroundStyle(OVTheme.muted)
+            Text("From what you told us in onboarding, this is a strong place to start today if you want a chapter that fits your season.")
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.muted)
+
+            NavigationLink {
+                WhereShouldIReadTodayView(
+                    store: store,
+                    plan: plan
+                )
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Read \(plan.primary.reference)")
+                            .font(OVTheme.heading(16))
+                            .foregroundStyle(OVTheme.midnight)
+
+                        Text(plan.primary.title)
+                            .font(OVTheme.body(13))
+                            .foregroundStyle(OVTheme.ink.opacity(0.74))
+                            .lineLimit(2)
                     }
 
                     Spacer()
 
-                    Text("Smart pick")
-                        .font(OVTheme.body(11))
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(OVTheme.midnight)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(OVTheme.smoke)
-                        .clipShape(Capsule())
                 }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(plan.primary.reference)
-                        .font(OVTheme.display(28))
-                        .foregroundStyle(OVTheme.midnight)
-
-                    Text(plan.primary.title)
-                        .font(OVTheme.heading(18))
-                        .foregroundStyle(OVTheme.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Text(plan.primary.reason)
-                        .font(OVTheme.body(15))
-                        .foregroundStyle(OVTheme.ink.opacity(0.76))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .lineLimit(4)
-                }
-                .padding(16)
-                .background(plan.primary.accent.opacity(0.15))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(plan.primary.accent.opacity(0.14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(OVTheme.line, lineWidth: 1)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-
-                HStack(spacing: 10) {
-                    homeStatChip("Best fit", plan.primary.badge)
-                    homeStatChip("Also", "\(plan.alternates.count) more")
-
-                    Spacer()
-
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(OVTheme.midnight)
-                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18)
-            .ovSurfaceCard(cornerRadius: 24)
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
-    }
-
-    private var resetWithGodCard: some View {
-        NavigationLink {
-            ResetWithGodView(store: store, accessManager: accessManager)
-        } label: {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("7 Day Reset With God")
-                            .font(OVTheme.heading(20))
-                            .foregroundStyle(OVTheme.ink)
-
-                        Text("A guided reset that helps you return to Scripture, prayer, and real obedience one day at a time.")
-                            .font(OVTheme.body(14))
-                            .foregroundStyle(OVTheme.muted)
-                    }
-
-                    Spacer()
-
-                    Text(store.hasCompletedResetChallenge ? "Complete" : "7 days")
-                        .font(OVTheme.body(11))
-                        .foregroundStyle(OVTheme.midnight)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(OVTheme.smoke)
-                        .clipShape(Capsule())
-                }
-
-                HStack(spacing: 8) {
-                    ForEach(1...7, id: \.self) { day in
-                        Circle()
-                            .fill(store.isResetChallengeDayCompleted(day) ? OVTheme.gold : OVTheme.smoke)
-                            .frame(width: 12, height: 12)
-                            .overlay(
-                                Circle()
-                                    .stroke(
-                                        store.isResetChallengeDayCompleted(day)
-                                        ? OVTheme.gold.opacity(0.24)
-                                        : OVTheme.line,
-                                        lineWidth: 1
-                                    )
-                            )
-                    }
-                }
-
-                HStack(spacing: 10) {
-                    homeStatChip(
-                        "Next",
-                        store.hasCompletedResetChallenge
-                        ? "Finished"
-                        : "Day \(store.nextResetChallengeDayNumber ?? 1)"
-                    )
-                    homeStatChip("Done", "\(store.resetChallengeCompletedCount)/7")
-
-                    Spacer()
-
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(OVTheme.midnight)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18)
-            .ovSurfaceCard(cornerRadius: 24)
-        }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .ovSurfaceCard(cornerRadius: 24)
     }
 
     private var quickAccessGrid: some View {
@@ -424,80 +338,43 @@ struct ScriptureHomeView: View {
         }
     }
 
-    private var growthSnapshotCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Growth snapshot")
+    private var howToPrayCard: some View {
+        NavigationLink {
+            HowToPrayView()
+        } label: {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(OVTheme.sky.opacity(0.42))
+                        .frame(width: 46, height: 46)
+
+                    Image(systemName: "hands.sparkles")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(OVTheme.midnight)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("How to pray")
                         .font(OVTheme.heading(20))
                         .foregroundStyle(OVTheme.ink)
 
-                    Text("This app tracks more than opening it. Keep reading, reflecting, and building real understanding.")
+                    Text("Start with Psalm 23, then learn a simple prayer rhythm you can use every day.")
                         .font(OVTheme.body(14))
                         .foregroundStyle(OVTheme.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .lineLimit(3)
                 }
 
-                Spacer()
-
-                Text(
-                    store.currentReflectionStreak == 0
-                    ? "Start today"
-                    : (store.currentReflectionStreak == 1 ? "1 day" : "\(store.currentReflectionStreak) days")
-                )
-                    .font(OVTheme.body(11))
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(OVTheme.midnight)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(OVTheme.smoke)
-                    .clipShape(Capsule())
+                    .padding(.top, 4)
             }
-
-            HStack(spacing: 10) {
-                growthMetricTile(
-                    label: "Reflection streak",
-                    value: store.currentReflectionStreak == 0 ? "Start" : "\(store.currentReflectionStreak)d",
-                    tint: OVTheme.sky.opacity(0.6)
-                )
-
-                growthMetricTile(
-                    label: "Reflections",
-                    value: "\(store.reflectionCount)",
-                    tint: OVTheme.mint.opacity(0.68)
-                )
-
-                growthMetricTile(
-                    label: "Lessons finished",
-                    value: "\(store.completedLessonsAcrossAllCourses)",
-                    tint: OVTheme.lemon.opacity(0.55)
-                )
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(OVTheme.cardPadding)
+            .ovSurfaceCard(cornerRadius: 22)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .ovSurfaceCard(cornerRadius: 22)
-    }
-
-    private func growthMetricTile(label: String, value: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(label.uppercased())
-                .font(OVTheme.body(10))
-                .foregroundStyle(OVTheme.muted)
-                .lineLimit(2)
-
-            Text(value)
-                .font(OVTheme.heading(20))
-                .foregroundStyle(OVTheme.midnight)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
-        .padding(14)
-        .background(tint)
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(OVTheme.line, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .buttonStyle(.plain)
     }
 
     private func homeQuickAccessTile(
@@ -627,8 +504,8 @@ struct ScriptureHomeView: View {
 
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .ovSurfaceCard(cornerRadius: 24)
+            .padding(OVTheme.cardPadding)
+            .ovSurfaceCard(cornerRadius: 24)
     }
 
     private var discoverGiftsCard: some View {
@@ -647,12 +524,12 @@ struct ScriptureHomeView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Discover how God may have gifted you")
+                    Text("Take your gift discovery quiz")
                         .font(OVTheme.heading(18))
                         .foregroundStyle(OVTheme.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text("Open Glorify and let Scripture point you toward your gifts and how to use them.")
+                    Text("Answer once, then let Glorify guide you day by day with habits, Scripture, and practical steps.")
                         .font(OVTheme.body(14))
                         .foregroundStyle(OVTheme.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -664,22 +541,98 @@ struct ScriptureHomeView: View {
                     .padding(.top, 4)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18)
+            .padding(OVTheme.cardPadding)
             .ovSurfaceCard(cornerRadius: 22)
         }
         .buttonStyle(.plain)
     }
 
-    private var dailyVerseShareItems: [Any] {
-        if let dailyVerseShareURL {
-            return [dailyVerseShareURL]
+    private func giftFocusCard(_ focus: GiftDailyFocus) -> some View {
+        Button {
+            openGlorifyGifts()
+        } label: {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(homeGiftAccent(focus.gift))
+                            .frame(width: 46, height: 46)
+
+                        Image(systemName: focus.gift.symbol)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(OVTheme.midnight)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Today's gift focus")
+                            .font(OVTheme.heading(18))
+                            .foregroundStyle(OVTheme.ink)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Text("Step \(focus.dayNumber) • \(focus.gift.title)")
+                            .font(OVTheme.body(12))
+                            .foregroundStyle(OVTheme.gold)
+                    }
+
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(OVTheme.midnight)
+                        .padding(.top, 4)
+                }
+
+                ProgressView(value: Double(focus.dayNumber), total: Double(max(focus.totalSteps, focus.dayNumber)))
+                    .tint(OVTheme.gold)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(focus.title)
+                        .font(OVTheme.heading(17))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text(focus.detail)
+                        .font(OVTheme.body(14))
+                        .foregroundStyle(OVTheme.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .lineLimit(3)
+
+                    Text(focus.actionStep)
+                        .font(OVTheme.body(13))
+                        .foregroundStyle(OVTheme.ink.opacity(0.8))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(spacing: 10) {
+                    homeStatChip("Gift", focus.gift.title)
+                    homeStatChip("Streak", "\(store.giftTrainingStreak) days")
+                    Spacer()
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(OVTheme.cardPadding)
+            .ovSurfaceCard(cornerRadius: 22)
         }
-        return [dailyVerseShareFallbackText]
+        .buttonStyle(.plain)
+    }
+
+    private func homeGiftAccent(_ gift: SpiritualGiftKind) -> Color {
+        switch gift {
+        case .encouragement:
+            return OVTheme.orchid.opacity(0.34)
+        case .service:
+            return OVTheme.mint.opacity(0.34)
+        case .teaching:
+            return OVTheme.sky.opacity(0.34)
+        case .mercy:
+            return OVTheme.lemon.opacity(0.34)
+        case .leadership:
+            return OVTheme.sand.opacity(0.38)
+        case .creativity:
+            return OVTheme.lemon.opacity(0.44)
+        }
     }
 
     @MainActor
     private func shareDailyVerseCard(_ dailyVerse: DailyBibleVerse) {
-        dailyVerseShareFallbackText = dailyVerse.shareText
+        cleanupDailyVerseSharePayload()
 
         let renderer = ImageRenderer(
             content: DailyVerseShareGraphic(dailyVerse: dailyVerse)
@@ -688,8 +641,7 @@ struct ScriptureHomeView: View {
         renderer.scale = 3
 
         guard let image = renderer.uiImage, let data = image.pngData() else {
-            dailyVerseShareURL = nil
-            showDailyVerseShareSheet = true
+            dailyVerseSharePayload = DailyVerseSharePayload(shareText: dailyVerse.shareText, fileURL: nil)
             return
         }
 
@@ -699,82 +651,39 @@ struct ScriptureHomeView: View {
                 .lowercased()
                 .replacingOccurrences(of: " ", with: "-"),
             "\(dailyVerse.location.chapter)",
-            "\(dailyVerse.verse.verse)"
+            "\(dailyVerse.verse.verse)",
+            UUID().uuidString
         ].joined(separator: "-") + ".png"
 
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
 
         do {
             try data.write(to: url, options: .atomic)
-            dailyVerseShareURL = url
+            dailyVerseSharePayload = DailyVerseSharePayload(
+                shareText: dailyVerse.shareText,
+                fileURL: url
+            )
         } catch {
-            dailyVerseShareURL = nil
+            dailyVerseSharePayload = DailyVerseSharePayload(shareText: dailyVerse.shareText, fileURL: nil)
         }
-
-        showDailyVerseShareSheet = true
     }
 
-    private var bibleOverviewCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            NavigationLink {
-                BibleLibraryScreen(store: store)
-            } label: {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(alignment: .top, spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(OVTheme.smoke)
-                                .frame(width: 42, height: 42)
-
-                            Image(systemName: "books.vertical")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(OVTheme.midnight)
-                        }
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Open the Bible")
-                                .font(OVTheme.heading(20))
-                                .foregroundStyle(OVTheme.ink)
-
-                            Text("Browse every book and chapter in the King James Version.")
-                                .font(OVTheme.body(14))
-                                .foregroundStyle(OVTheme.muted)
-                        }
-                    }
-
-                    HStack(spacing: 10) {
-                        homeStatChip("Books", "\(BibleDataProvider.books.count)")
-                        homeStatChip("Chapters", "\(totalChapterCount)")
-                        homeStatChip("Version", "KJV")
-                    }
-
-                    HStack {
-                        Text("Open library")
-                            .font(OVTheme.heading(14))
-                            .foregroundStyle(OVTheme.midnight)
-
-                        Spacer()
-
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(OVTheme.midnight)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
+    private func cleanupDailyVerseSharePayload() {
+        if let fileURL = dailyVerseSharePayload?.fileURL {
+            try? FileManager.default.removeItem(at: fileURL)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .ovSurfaceCard(cornerRadius: 22)
+        dailyVerseSharePayload = nil
     }
+
 }
 
 struct FullBibleView: View {
     @ObservedObject var store: SoulJourneyStore
+    @Binding var externalTarget: BibleReferenceTarget?
 
     var body: some View {
         NavigationStack {
-            BibleLibraryScreen(store: store)
+            BibleLibraryScreen(store: store, externalTarget: $externalTarget)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         AppInfoButton()
@@ -784,8 +693,206 @@ struct FullBibleView: View {
     }
 }
 
+private struct HowToPrayView: View {
+    private let psalmLines = [
+        "The Lord is my shepherd; I shall not want.",
+        "He maketh me to lie down in green pastures: he leadeth me beside the still waters.",
+        "He restoreth my soul: he leadeth me in the paths of righteousness for his name's sake.",
+        "Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me.",
+        "Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over.",
+        "Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the Lord for ever."
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: OVTheme.cardSpacing) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("How to pray")
+                        .font(OVTheme.display(34))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text("Start with Scripture. Let the words slow you down, then answer God honestly in your own words.")
+                        .font(OVTheme.body(15))
+                        .foregroundStyle(OVTheme.ink.opacity(0.74))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(OVTheme.cardPadding)
+                .ovSurfaceCard(cornerRadius: 24)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Psalm 23")
+                        .font(OVTheme.heading(22))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text("A prayer of trust")
+                        .font(OVTheme.body(12))
+                        .foregroundStyle(OVTheme.gold)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(Array(psalmLines.enumerated()), id: \.offset) { index, line in
+                            HStack(alignment: .top, spacing: 12) {
+                                Text("\(index + 1)")
+                                    .font(OVTheme.body(11))
+                                    .foregroundStyle(OVTheme.gold)
+                                    .frame(width: 18, alignment: .leading)
+
+                                Text(line)
+                                    .font(OVTheme.body(16))
+                                    .foregroundStyle(OVTheme.ink.opacity(0.82))
+                                    .lineSpacing(2)
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(OVTheme.paper.opacity(0.96))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(OVTheme.line, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(OVTheme.cardPadding)
+                .ovSurfaceCard(cornerRadius: 24)
+
+                NavigationLink {
+                    PrayerTeachingView()
+                } label: {
+                    HStack {
+                        Text("Teach me how to pray")
+                            .font(OVTheme.heading(16))
+                            .foregroundStyle(.white)
+
+                        Spacer()
+
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
+                    .background(OVTheme.midnight)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, OVTheme.screenHorizontalPadding)
+            .padding(.vertical, OVTheme.screenVerticalPadding)
+        }
+        .background(OVTheme.mainBackground.ignoresSafeArea())
+        .navigationTitle("Prayer")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct PrayerTeachingView: View {
+    private let steps: [PrayerTeachingStep] = [
+        PrayerTeachingStep(
+            title: "Start with who God is",
+            detail: "Before asking for anything, slow down and remember His character: Father, Shepherd, Savior, King."
+        ),
+        PrayerTeachingStep(
+            title: "Be honest about where you are",
+            detail: "Tell God what is actually happening in your heart. Prayer is not performance. It is coming near in truth."
+        ),
+        PrayerTeachingStep(
+            title: "Confess and receive mercy",
+            detail: "Name what needs repentance, then trust that Jesus is not surprised by your weakness."
+        ),
+        PrayerTeachingStep(
+            title: "Ask for what you need",
+            detail: "Bring your needs, burdens, decisions, family, future, and temptations before Him clearly."
+        ),
+        PrayerTeachingStep(
+            title: "Leave with obedience",
+            detail: "End by asking: what is one faithful step I can take today?"
+        )
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: OVTheme.cardSpacing) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("A simple way to pray")
+                        .font(OVTheme.display(32))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text("You do not need perfect words. Begin with God, tell the truth, ask for help, and take one obedient step.")
+                        .font(OVTheme.body(15))
+                        .foregroundStyle(OVTheme.ink.opacity(0.74))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(OVTheme.cardPadding)
+                .ovSurfaceCard(cornerRadius: 24)
+
+                VStack(spacing: 12) {
+                    ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                        PrayerTeachingStepCard(number: index + 1, step: step)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Try this now")
+                        .font(OVTheme.heading(20))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text("Lord, teach me to come to You honestly. Show me what I am carrying, what I need to confess, what I need to ask, and what step of obedience is in front of me today. In Jesus' name, amen.")
+                        .font(OVTheme.body(15))
+                        .foregroundStyle(OVTheme.ink.opacity(0.78))
+                        .lineSpacing(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(OVTheme.cardPadding)
+                .ovSurfaceCard(cornerRadius: 24)
+            }
+            .padding(.horizontal, OVTheme.screenHorizontalPadding)
+            .padding(.vertical, OVTheme.screenVerticalPadding)
+        }
+        .background(OVTheme.mainBackground.ignoresSafeArea())
+        .navigationTitle("How to pray")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct PrayerTeachingStep: Identifiable, Hashable {
+    let id = UUID()
+    let title: String
+    let detail: String
+}
+
+private struct PrayerTeachingStepCard: View {
+    let number: Int
+    let step: PrayerTeachingStep
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Text(String(format: "%02d", number))
+                .font(OVTheme.body(12))
+                .foregroundStyle(OVTheme.gold)
+                .frame(width: 28, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(step.title)
+                    .font(OVTheme.heading(18))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Text(step.detail)
+                    .font(OVTheme.body(14))
+                    .foregroundStyle(OVTheme.ink.opacity(0.74))
+                    .lineSpacing(2)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .ovSurfaceCard(cornerRadius: 22)
+    }
+}
+
 struct BibleLibraryScreen: View {
     @ObservedObject var store: SoulJourneyStore
+    @Binding var externalTarget: BibleReferenceTarget?
 
     @State private var query = ""
     @State private var jumpTarget: BibleReferenceTarget?
@@ -814,14 +921,14 @@ struct BibleLibraryScreen: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 16) {
+            LazyVStack(spacing: OVTheme.cardSpacing) {
                 searchCard
                 continueCard
                 testamentSection(title: "Old Testament", books: visibleOldTestamentBooks)
                 testamentSection(title: "New Testament", books: visibleNewTestamentBooks)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.horizontal, OVTheme.screenHorizontalPadding)
+            .padding(.vertical, OVTheme.screenVerticalPadding)
         }
         .background(OVTheme.mainBackground.ignoresSafeArea())
         .navigationTitle("Bible")
@@ -838,6 +945,12 @@ struct BibleLibraryScreen: View {
         }
         .sheet(isPresented: $showNotesSheet) {
             BibleVerseNotesSheet(store: store)
+        }
+        .onAppear {
+            consumeExternalTargetIfNeeded()
+        }
+        .onChange(of: externalTarget) { _, _ in
+            consumeExternalTargetIfNeeded()
         }
     }
 
@@ -914,8 +1027,8 @@ struct BibleLibraryScreen: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
-        .ovSurfaceCard(cornerRadius: 24)
+            .padding(OVTheme.cardPadding)
+            .ovSurfaceCard(cornerRadius: 24)
     }
 
     private var continueCard: some View {
@@ -941,10 +1054,27 @@ struct BibleLibraryScreen: View {
                 Image(systemName: "chevron.right")
                     .foregroundStyle(OVTheme.ink.opacity(0.45))
             }
-            .padding(18)
+            .padding(OVTheme.cardPadding)
             .ovSurfaceCard(cornerRadius: 20)
         }
         .buttonStyle(.plain)
+    }
+
+    private func consumeExternalTargetIfNeeded() {
+        guard let externalTarget else { return }
+
+        let target = externalTarget
+        self.externalTarget = nil
+
+        if jumpTarget?.id == target.id {
+            jumpTarget = nil
+            DispatchQueue.main.async {
+                jumpTarget = target
+            }
+            return
+        }
+
+        jumpTarget = target
     }
 
     private func testamentSection(title: String, books: [BibleBook]) -> some View {
@@ -1039,7 +1169,7 @@ struct BibleBookDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
                 headerCard
 
                 LazyVGrid(columns: columns, spacing: 12) {
@@ -1059,8 +1189,8 @@ struct BibleBookDetailView: View {
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.horizontal, OVTheme.screenHorizontalPadding)
+            .padding(.vertical, OVTheme.screenVerticalPadding)
         }
         .background(OVTheme.mainBackground.ignoresSafeArea())
         .navigationTitle(book.name)
@@ -1084,7 +1214,7 @@ struct BibleBookDetailView: View {
                 .foregroundStyle(OVTheme.muted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
+        .padding(OVTheme.cardPadding)
         .ovSurfaceCard(cornerRadius: 22)
     }
 
@@ -1181,8 +1311,8 @@ struct BibleChapterReaderView: View {
                                 chapterNavigation
                             }
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
+                        .padding(.horizontal, OVTheme.screenHorizontalPadding)
+                        .padding(.vertical, OVTheme.screenVerticalPadding)
                     }
                     .background(OVTheme.mainBackground.ignoresSafeArea())
                     .navigationTitle(chapter.title)
@@ -1706,11 +1836,11 @@ private struct HomeStudyFocus: Hashable {
             focus(
                 title: "Stay rooted in the Word",
                 kicker: "For steady consistency",
-                detail: "James starts by calling you to endure pressure without drifting from obedience.",
+                detail: "Hebrews 12 helps you keep running with endurance when the walk with God feels harder than you expected.",
                 prompt: "What would steady obedience look like in the next 24 hours?",
                 badge: "Personal",
                 pathLabel: "Consistency",
-                reference: "James 1"
+                reference: "Hebrews 12"
             ),
             focus(
                 title: "Delight before discipline",
@@ -1753,11 +1883,11 @@ private struct HomeStudyFocus: Hashable {
             focus(
                 title: "Ask for wisdom without splitting your heart",
                 kicker: "For hearing God clearly",
-                detail: "James 1 ties clarity to prayer, trust, and single-hearted dependence on God.",
+                detail: "Proverbs 2 shows that God gives wisdom to people who seek Him with an honest heart.",
                 prompt: "Where are you asking God for direction while still gripping control?",
                 badge: "Personal",
                 pathLabel: "Clarity",
-                reference: "James 1"
+                reference: "Proverbs 2"
             )
         ],
         "controlling thoughts": [
@@ -1860,11 +1990,11 @@ private struct HomeStudyFocus: Hashable {
             focus(
                 title: "Ask God for wisdom in the middle of pressure",
                 kicker: "For purpose and direction",
-                detail: "James 1 reminds you that purpose often becomes clearer when trials push you back to God for wisdom.",
+                detail: "Psalm 25 slows you down and teaches you to ask God to show you the way you should walk.",
                 prompt: "What decision needs wisdom more than speed right now?",
                 badge: "Personal",
                 pathLabel: "Direction",
-                reference: "James 1"
+                reference: "Psalms 25"
             ),
             focus(
                 title: "Walk in what was prepared for you",
@@ -1880,13 +2010,13 @@ private struct HomeStudyFocus: Hashable {
 
     private static let fallbackFocuses: [HomeStudyFocus] = [
         focus(
-            title: "Begin with wisdom",
+            title: "Begin by seeing Christ clearly",
             kicker: "For today's study",
-            detail: "James 1 is the cleanest place to start when you want Scripture to become practical and personal quickly.",
-            prompt: "What do you most need wisdom for today?",
+            detail: "John 1 is a simple place to begin when you want to come back to who Jesus is and what it means to follow Him.",
+            prompt: "What do you notice first about Jesus in this chapter?",
             badge: "Today",
             pathLabel: "Start",
-            reference: "James 1"
+            reference: "John 1"
         ),
         focus(
             title: "Stay planted",
@@ -2809,7 +2939,7 @@ private struct ReadingRecommendation: Identifiable, Hashable {
 
     var target: BibleReferenceTarget {
         BibleDataProvider.resolveReference(from: reference)
-            ?? BibleReferenceTarget(location: BibleLocation(book: "James", chapter: 1), verse: nil)
+            ?? BibleReferenceTarget(location: BibleLocation(book: "John", chapter: 1), verse: nil)
     }
 }
 
@@ -2822,18 +2952,17 @@ private struct ReadingRecommendationPlan {
         profile: OnboardingAnswerSet,
         lastReadLocation: BibleLocation?,
         reflectionStreak: Int,
-        completedLessons: Int,
         date: Date
     ) -> ReadingRecommendationPlan {
         let focus = HomeStudyFocus.pick(for: profile, date: date)
             ?? HomeStudyFocus(
-                title: "Begin with wisdom",
+                title: "Start by seeing Christ clearly",
                 kicker: "For today's study",
-                detail: "James 1 is practical, direct, and easy to carry into real life right away.",
-                prompt: "What do you need wisdom from God for today?",
+                detail: "John 1 is a clean place to begin when you want to come back to who Jesus is and why He matters.",
+                prompt: "What does this chapter show you about Jesus today?",
                 badge: "Today",
                 pathLabel: "Start",
-                target: BibleReferenceTarget(location: BibleLocation(book: "James", chapter: 1), verse: nil)
+                target: BibleReferenceTarget(location: BibleLocation(book: "John", chapter: 1), verse: nil)
             )
 
         let primary = recommendation(from: focus)
@@ -2866,11 +2995,7 @@ private struct ReadingRecommendationPlan {
             reasons.append("It is strong for getting back in without needing a long setup or a big plan first.")
         }
 
-        if completedLessons > 0 {
-            reasons.append("You already have some lesson progress, so this pick keeps building real chapter-by-chapter understanding.")
-        } else {
-            reasons.append("It is one of the easiest chapters to start with if you want depth without getting overwhelmed.")
-        }
+        reasons.append("It is simple to open, clear to follow, and strong for getting back into the Word without overthinking where to begin.")
 
         if lastReadLocation != nil {
             reasons.append("Your saved place is still available below, so you can either continue there or follow today's stronger fit.")
@@ -3016,7 +3141,6 @@ private struct ReadingRecommendationPlan {
 
 private struct WhereShouldIReadTodayView: View {
     @ObservedObject var store: SoulJourneyStore
-    @ObservedObject var accessManager: SubscriptionAccessManager
     let plan: ReadingRecommendationPlan
 
     var body: some View {
@@ -3033,10 +3157,6 @@ private struct WhereShouldIReadTodayView: View {
         .background(OVTheme.mainBackground.ignoresSafeArea())
         .navigationTitle("Where to read")
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private var primaryLesson: WisdomLesson? {
-        store.allLessons.first(where: { lessonReference(for: $0) == plan.primary.reference })
     }
 
     private var headerCard: some View {
@@ -3112,24 +3232,6 @@ private struct WhereShouldIReadTodayView: View {
                 )
             }
             .buttonStyle(.plain)
-
-            if let primaryLesson {
-                NavigationLink {
-                    ChapterStudyView(
-                        store: store,
-                        lesson: primaryLesson,
-                        hasPremiumAccess: accessManager.hasAccess
-                    )
-                } label: {
-                    actionRow(
-                        title: "Open the lesson too",
-                        subtitle: accessManager.hasAccess
-                        ? "Go deeper with guided teaching, history, and reflection."
-                        : "Open the lesson flow and reflect on the chapter step by step."
-                    )
-                }
-                .buttonStyle(.plain)
-            }
         }
         .padding(22)
         .background(OVTheme.elevatedCard)
@@ -3258,10 +3360,6 @@ private struct WhereShouldIReadTodayView: View {
         .background(OVTheme.midnight)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
-
-    private func lessonReference(for lesson: WisdomLesson) -> String {
-        lesson.sourceName.replacingOccurrences(of: "Bible: ", with: "")
-    }
 }
 
 private struct ResetChallengeDayGuide: Identifiable, Hashable {
@@ -3282,7 +3380,7 @@ private struct ResetChallengeDayGuide: Identifiable, Hashable {
 
     var target: BibleReferenceTarget {
         BibleDataProvider.resolveReference(from: reference)
-            ?? BibleReferenceTarget(location: BibleLocation(book: "James", chapter: 1), verse: nil)
+            ?? BibleReferenceTarget(location: BibleLocation(book: "John", chapter: 1), verse: nil)
     }
 
     static let all: [ResetChallengeDayGuide] = [
@@ -3359,9 +3457,8 @@ private struct ResetChallengeDayGuide: Identifiable, Hashable {
     ]
 }
 
-private struct ResetWithGodView: View {
+struct ResetWithGodView: View {
     @ObservedObject var store: SoulJourneyStore
-    @ObservedObject var accessManager: SubscriptionAccessManager
 
     var body: some View {
         ScrollView {
@@ -3454,7 +3551,6 @@ private struct ResetWithGodView: View {
     }
 
     private func dayCard(_ day: ResetChallengeDayGuide) -> some View {
-        let lesson = lessonForDay(day)
         let isCompleted = store.isResetChallengeDayCompleted(day.day)
 
         return VStack(alignment: .leading, spacing: 14) {
@@ -3504,25 +3600,6 @@ private struct ResetWithGodView: View {
                     )
                 }
                 .buttonStyle(.plain)
-
-                if let lesson {
-                    NavigationLink {
-                        ChapterStudyView(
-                            store: store,
-                            lesson: lesson,
-                            hasPremiumAccess: accessManager.hasAccess
-                        )
-                    } label: {
-                        resetActionButton(
-                            title: "Open lesson",
-                            subtitle: accessManager.hasAccess ? "Guided depth" : "Reflection flow",
-                            fill: .white,
-                            foreground: OVTheme.midnight,
-                            outlined: true
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
             }
 
             Button {
@@ -3640,18 +3717,12 @@ private struct ResetWithGodView: View {
             .clipShape(Capsule())
     }
 
-    private func lessonForDay(_ day: ResetChallengeDayGuide) -> WisdomLesson? {
-        store.allLessons.first(where: { lesson in
-            lesson.sourceName.replacingOccurrences(of: "Bible: ", with: "") == day.reference
-        })
-    }
 }
 
 private struct FeelingShortcut: Identifiable {
     let id: String
     let label: String
     let guideID: String
-    let lessonReference: String
     let accentHex: String
     let verseReferences: [String]
     let intro: String
@@ -3669,7 +3740,6 @@ private struct FeelingShortcut: Identifiable {
             id: "anxious",
             label: "anxious",
             guideID: "anxious",
-            lessonReference: "James 1",
             accentHex: "DDEAF2",
             verseReferences: ["Philippians 4:6", "Matthew 6:33", "Psalm 27:1"],
             intro: "When your mind feels loud, do not start with more scrolling. Start with truth that steadies the heart."
@@ -3678,7 +3748,6 @@ private struct FeelingShortcut: Identifiable {
             id: "tempted",
             label: "tempted",
             guideID: "falling-into-sin",
-            lessonReference: "James 1",
             accentHex: "F5D2C6",
             verseReferences: ["James 1:14", "Romans 6:12", "1 John 1:9"],
             intro: "Temptation grows fast in the dark. Bring it into the light quickly and let Scripture interrupt the pattern."
@@ -3687,7 +3756,6 @@ private struct FeelingShortcut: Identifiable {
             id: "lonely",
             label: "lonely",
             guideID: "alone",
-            lessonReference: "James 5",
             accentHex: "DDEAF2",
             verseReferences: ["Psalm 139:1", "John 14:18", "James 5:16"],
             intro: "Loneliness can make you feel invisible. These passages pull you back toward God's presence and honest connection."
@@ -3696,7 +3764,6 @@ private struct FeelingShortcut: Identifiable {
             id: "confused",
             label: "confused",
             guideID: "purpose",
-            lessonReference: "Proverbs 3",
             accentHex: "ECDDAB",
             verseReferences: ["Proverbs 3:5", "James 1:5", "Romans 12:2"],
             intro: "Confusion usually makes you want the whole answer now. Scripture often starts by giving you wisdom for the next faithful step."
@@ -3705,7 +3772,6 @@ private struct FeelingShortcut: Identifiable {
             id: "tired",
             label: "tired",
             guideID: "far-from-god",
-            lessonReference: "Psalm 1",
             accentHex: "E7E1F0",
             verseReferences: ["Psalm 42:1", "John 15:4", "Isaiah 55:3"],
             intro: "When your soul feels tired, do not assume God is absent. Slow down, return, and let the Word re-root you."
@@ -3714,7 +3780,6 @@ private struct FeelingShortcut: Identifiable {
             id: "unmotivated",
             label: "unmotivated",
             guideID: "discipline",
-            lessonReference: "Proverbs 6",
             accentHex: "D9EBDD",
             verseReferences: ["Proverbs 6:6", "Psalm 1:2", "1 Corinthians 9:27"],
             intro: "When motivation is weak, structure matters more than waiting for a better mood. Let Scripture move you back into steady action."
@@ -3724,15 +3789,10 @@ private struct FeelingShortcut: Identifiable {
 
 private struct FeelingResponseView: View {
     @ObservedObject var store: SoulJourneyStore
-    @ObservedObject var accessManager: SubscriptionAccessManager
     let shortcut: FeelingShortcut
 
     private var guide: LifeSituationGuide {
         shortcut.guide
-    }
-
-    private var suggestedLesson: WisdomLesson? {
-        store.allLessons.first(where: { lessonReference(for: $0) == shortcut.lessonReference })
     }
 
     var body: some View {
@@ -3740,7 +3800,7 @@ private struct FeelingResponseView: View {
             VStack(alignment: .leading, spacing: 18) {
                 headerCard
                 versesSection
-                lessonSection
+                guideSection
                 prayerSection
             }
             .padding(.horizontal, 20)
@@ -3777,7 +3837,7 @@ private struct FeelingResponseView: View {
 
             HStack(spacing: 8) {
                 quickHelpChip("\(shortcut.verseReferences.count) verses")
-                quickHelpChip("1 lesson")
+                quickHelpChip("Guide")
                 quickHelpChip("Prayer")
             }
         }
@@ -3841,56 +3901,12 @@ private struct FeelingResponseView: View {
         }
     }
 
-    private var lessonSection: some View {
+    private var guideSection: some View {
         quickSectionCard(
-            title: "Suggested lesson",
-            subtitle: "Keep moving by taking one guided next step instead of staying inside the feeling."
+            title: "Go deeper",
+            subtitle: "If you need more than a few verses, open the full guide for Scripture, prayer, and a clear next step."
         ) {
             VStack(spacing: 12) {
-                if let suggestedLesson {
-                    NavigationLink {
-                        ChapterStudyView(
-                            store: store,
-                            lesson: suggestedLesson,
-                            hasPremiumAccess: accessManager.hasAccess
-                        )
-                    } label: {
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(lessonReference(for: suggestedLesson))
-                                        .font(OVTheme.heading(16))
-                                        .foregroundStyle(OVTheme.midnight)
-
-                                    Text(suggestedLesson.title)
-                                        .font(OVTheme.body(14))
-                                        .foregroundStyle(OVTheme.ink.opacity(0.8))
-                                }
-
-                                Spacer()
-
-                                Image(systemName: "arrow.right")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundStyle(OVTheme.midnight)
-                            }
-
-                            Text(suggestedLesson.summary)
-                                .font(OVTheme.body(14))
-                                .foregroundStyle(OVTheme.ink.opacity(0.76))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .lineLimit(4)
-                        }
-                        .padding(18)
-                        .background(.white.opacity(0.96))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(OVTheme.line, lineWidth: 1)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
-
                 NavigationLink {
                     LifeSituationGuideDetailView(store: store, guide: guide)
                 } label: {
@@ -3978,9 +3994,6 @@ private struct FeelingResponseView: View {
             .clipShape(Capsule())
     }
 
-    private func lessonReference(for lesson: WisdomLesson) -> String {
-        lesson.sourceName.replacingOccurrences(of: "Bible: ", with: "")
-    }
 }
 
 private struct QuickHelpVerse {
@@ -4002,35 +4015,16 @@ private struct QuickHelpVerse {
     }
 }
 
-private struct OVSurfaceCardModifier: ViewModifier {
-    let cornerRadius: CGFloat
-    let fill: Color
-    let shadowOpacity: Double
-
-    func body(content: Content) -> some View {
-        content
-            .background(fill)
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(OVTheme.line, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(shadowOpacity), radius: 18, y: 8)
-    }
-}
-
 private extension View {
     func ovSurfaceCard(
         cornerRadius: CGFloat = 20,
         fill: Color = OVTheme.cardBackground,
         shadowOpacity: Double = 0.05
     ) -> some View {
-        modifier(
-            OVSurfaceCardModifier(
-                cornerRadius: cornerRadius,
-                fill: fill,
-                shadowOpacity: shadowOpacity
-            )
+        premiumSurfaceCard(
+            cornerRadius: cornerRadius,
+            fill: fill,
+            shadowOpacity: shadowOpacity
         )
     }
 }
@@ -4409,11 +4403,23 @@ private struct ActivityShareSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
+private struct DailyVerseSharePayload: Identifiable {
+    let id = UUID()
+    let shareText: String
+    let fileURL: URL?
+
+    var activityItems: [Any] {
+        if let fileURL {
+            return [fileURL, shareText]
+        }
+        return [shareText]
+    }
+}
+
 struct BibleAppView_Previews: PreviewProvider {
     static var previews: some View {
         ScriptureHomeView(
             store: SoulJourneyStore(),
-            accessManager: SubscriptionAccessManager(),
             openGlorifyGifts: {}
         )
     }
