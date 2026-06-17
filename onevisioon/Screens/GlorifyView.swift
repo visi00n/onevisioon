@@ -24,15 +24,15 @@ private struct CreationComposerImage: Identifiable {
 
 struct GlorifyView: View {
     @ObservedObject var store: SoulJourneyStore
-    @ObservedObject var accessManager: SubscriptionAccessManager
     @Binding var jumpTarget: GlorifyRoute?
 
     @State private var scriptureTarget: BibleReferenceTarget?
-    @State private var showSchoolPreview = false
     @State private var isTakingGiftQuiz = false
     @State private var isShowingGiftQuizIntro = false
     @State private var showGiftQuizResults = false
     @State private var currentGiftQuestionIndex = 0
+    @State private var giftQuizQuestions: [GiftDiscoveryQuestion] = GiftDiscoveryCatalog.questions
+    @State private var giftQuizAdaptiveAnchorMap: [String: String] = [:]
     @State private var giftQuizAnswers: [String: String] = [:]
     @State private var expandedGiftResultSections: Set<String> = []
     @State private var expandedGiftPathSections: Set<String> = []
@@ -40,10 +40,6 @@ struct GlorifyView: View {
     @State private var isEnablingMorningReminders = false
     @State private var morningReminderStatus: String?
     @FocusState private var giftReflectionFocused: Bool
-
-    private var isBibleSchoolCreatorSpaceUnlocked: Bool {
-        store.onboardingProfile.selectedVersion == "premium" || accessManager.hasActiveSubscription
-    }
 
     private var todayGiftCheckIn: GiftTrainingCheckIn {
         store.giftTrainingCheckIn()
@@ -69,7 +65,18 @@ struct GlorifyView: View {
     }
 
     private var currentGiftQuestion: GiftDiscoveryQuestion {
-        GiftDiscoveryCatalog.questions[currentGiftQuestionIndex]
+        if giftQuizQuestions.indices.contains(currentGiftQuestionIndex) {
+            return giftQuizQuestions[currentGiftQuestionIndex]
+        }
+        return giftQuizQuestions.first ?? GiftDiscoveryCatalog.questions[0]
+    }
+
+    private var giftQuizQuestionTotal: Int {
+        max(1, giftQuizQuestions.count)
+    }
+
+    private var completedGiftQuestionCount: Int {
+        store.giftDiscoveryProfile?.answers.count ?? GiftDiscoveryCatalog.questions.count
     }
 
     private var todayMorningQuote: GlorifyMorningQuote {
@@ -113,6 +120,7 @@ struct GlorifyView: View {
                                     giftQuizReminderCard
                                 }
                                 giftQuizResultsContinueCard
+                                retakeQuizButton
                             } else {
                                 giftGrowthHeroCard
                                 if let dailyGiftFocus {
@@ -133,32 +141,17 @@ struct GlorifyView: View {
                                 ) {
                                     giftTrackerSection
                                 }
-                                giftPathAccordionSection(
-                                    id: "gift-profile",
-                                    title: "Gift profile",
-                                    subtitle: "See your strongest lanes and growth edge.",
-                                    systemImage: "sparkles.rectangle.stack.fill"
-                                ) {
-                                    giftProfileSection
-                                }
-                                giftPathAccordionSection(
-                                    id: "gift-reflection",
-                                    title: "Gift reflection",
-                                    subtitle: "Write what you practiced and where God stretched you.",
-                                    systemImage: "square.and.pencil"
-                                ) {
-                                    giftReflectionSection
-                                }
-                                if discoveredGifts.contains(.creativity) {
+                                if todayGiftCheckIn.reflection.trimmed.isEmpty {
                                     giftPathAccordionSection(
-                                        id: "creator-feed",
-                                        title: "Creator space",
-                                        subtitle: "Open the creative sharing space when you need it.",
-                                        systemImage: "photo.stack.fill"
+                                        id: "gift-reflection",
+                                        title: "Gift reflection",
+                                        subtitle: "Write what you practiced and where God stretched you.",
+                                        systemImage: "square.and.pencil"
                                     ) {
-                                        creatorFeedSection
+                                        giftReflectionSection
                                     }
                                 }
+                                retakeQuizButton
                             }
                         } else if isTakingGiftQuiz {
                             giftQuizHeroCard
@@ -181,9 +174,6 @@ struct GlorifyView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(item: $scriptureTarget) { target in
                     BibleChapterReaderView(store: store, target: target)
-                }
-                .sheet(isPresented: $showSchoolPreview) {
-                    GlorifySchoolPreviewView()
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -239,7 +229,7 @@ struct GlorifyView: View {
                 .foregroundStyle(OVTheme.ink.opacity(0.76))
 
             HStack(spacing: 8) {
-                topChip("\(GiftDiscoveryCatalog.questions.count)-question profile")
+                topChip("\(GiftDiscoveryCatalog.questions.count)+ adaptive profile")
                 topChip("Daily training")
                 topChip("Real habits")
             }
@@ -315,7 +305,7 @@ struct GlorifyView: View {
 
                 Spacer()
 
-                Text(isShowingGiftQuizIntro ? "Before question 1" : "Question \(currentGiftQuestionIndex + 1) of \(GiftDiscoveryCatalog.questions.count)")
+                Text(isShowingGiftQuizIntro ? "Before question 1" : "Question \(currentGiftQuestionIndex + 1) of \(giftQuizQuestionTotal)")
                     .font(OVTheme.body(12))
                     .foregroundStyle(OVTheme.ink.opacity(0.7))
             }
@@ -330,7 +320,7 @@ struct GlorifyView: View {
 
             ProgressView(
                 value: isShowingGiftQuizIntro ? 0 : Double(currentGiftQuestionIndex + 1),
-                total: Double(GiftDiscoveryCatalog.questions.count)
+                total: Double(giftQuizQuestionTotal)
             )
                 .tint(OVTheme.gold)
         }
@@ -349,7 +339,7 @@ struct GlorifyView: View {
                 .foregroundStyle(OVTheme.ink.opacity(0.74))
 
             VStack(alignment: .leading, spacing: 10) {
-                previewBullet("You answer \(GiftDiscoveryCatalog.questions.count) short questions")
+                previewBullet("You answer \(GiftDiscoveryCatalog.questions.count) core questions plus adaptive follow-ups")
                 previewBullet("One Visioon summarizes the gifts that show up strongest")
                 previewBullet("After the quiz, the next sections stay collapsed until you open them")
             }
@@ -468,7 +458,7 @@ struct GlorifyView: View {
             }
 
             HStack(spacing: 10) {
-                heroMetricTile("Questions", "\(GiftDiscoveryCatalog.questions.count)")
+                heroMetricTile("Questions", "\(completedGiftQuestionCount)")
                 heroMetricTile("Confidence", profile?.confidenceLabel ?? "Fit")
                 heroMetricTile("Next", "Daily training")
             }
@@ -607,6 +597,20 @@ struct GlorifyView: View {
         }
         .padding(OVTheme.cardPadding)
         .glorifyCard()
+    }
+
+    private var retakeQuizButton: some View {
+        Button {
+            startGiftQuiz()
+        } label: {
+            Text("Retake gift quiz")
+                .font(OVTheme.body(13))
+                .foregroundStyle(OVTheme.ink.opacity(0.74))
+                .underline()
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
     }
 
     private func giftQuizOptionRow(_ option: GiftDiscoveryOption) -> some View {
@@ -1004,82 +1008,6 @@ struct GlorifyView: View {
         .glorifyCard(cornerRadius: 22)
     }
 
-    private var giftProfileSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("How One Visioon reads your gifts")
-                .font(OVTheme.heading(22))
-                .foregroundStyle(OVTheme.ink)
-
-            Text("These are not labels to show off. They are likely lanes of faithfulness the app can now help you practice day to day.")
-                .font(OVTheme.body(14))
-                .foregroundStyle(OVTheme.ink.opacity(0.72))
-
-            if let primaryNeed = store.giftDiscoveryProfile?.primaryNeed {
-                detailBox(
-                    title: "Main growth edge",
-                    text: primaryNeed.shortSummary,
-                    tint: OVTheme.sky.opacity(0.16)
-                )
-            }
-
-            VStack(spacing: 12) {
-                ForEach(discoveredGifts, id: \.id) { gift in
-                    HStack(alignment: .top, spacing: 14) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(giftAccent(gift))
-                                .frame(width: 46, height: 46)
-
-                            Image(systemName: gift.symbol)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(OVTheme.midnight)
-                        }
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(gift.title)
-                                    .font(OVTheme.heading(18))
-                                    .foregroundStyle(OVTheme.midnight)
-
-                                Spacer()
-
-                                if let profile = store.giftDiscoveryProfile {
-                                    Text("\(profile.score(for: gift)) pts")
-                                        .font(OVTheme.body(12))
-                                        .foregroundStyle(OVTheme.ink.opacity(0.64))
-                                }
-                            }
-
-                            Text(gift.shortSummary)
-                                .font(OVTheme.body(14))
-                                .foregroundStyle(OVTheme.ink.opacity(0.76))
-
-                            Text(gift.growthLine)
-                                .font(OVTheme.body(13))
-                                .foregroundStyle(OVTheme.gold)
-                        }
-                    }
-                    .padding(16)
-                    .glorifyCard(cornerRadius: 20, fill: OVTheme.elevatedCard)
-                }
-            }
-
-            Button {
-                startGiftQuiz()
-            } label: {
-                Text("Retake gift quiz")
-                    .font(OVTheme.heading(14))
-                    .foregroundStyle(OVTheme.midnight)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(OVTheme.paper)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.top, 2)
-    }
-
     private var giftReflectionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Gift reflection")
@@ -1257,6 +1185,8 @@ struct GlorifyView: View {
             isShowingGiftQuizIntro = true
             showGiftQuizResults = false
             currentGiftQuestionIndex = 0
+            giftQuizQuestions = GiftDiscoveryCatalog.questions
+            giftQuizAdaptiveAnchorMap = [:]
             giftQuizAnswers = [:]
             expandedGiftResultSections = []
             expandedGiftPathSections = []
@@ -1265,12 +1195,16 @@ struct GlorifyView: View {
     }
 
     private func selectGiftQuizOption(_ optionID: String) {
-        guard GiftDiscoveryCatalog.questions.indices.contains(currentGiftQuestionIndex) else { return }
+        guard giftQuizQuestions.indices.contains(currentGiftQuestionIndex) else { return }
 
         let question = currentGiftQuestion
         giftQuizAnswers[question.id] = optionID
 
-        if currentGiftQuestionIndex == GiftDiscoveryCatalog.questions.count - 1 {
+        if GiftDiscoveryCatalog.isBaseQuestionID(question.id) {
+            refreshAdaptiveFollowUp(after: question, selectedOptionID: optionID)
+        }
+
+        if currentGiftQuestionIndex >= giftQuizQuestions.count - 1 {
             store.completeGiftQuiz(answers: giftQuizAnswers)
             giftReflectionDraft = store.giftTrainingCheckIn().reflection
             withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
@@ -1284,6 +1218,37 @@ struct GlorifyView: View {
 
         withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
             currentGiftQuestionIndex += 1
+        }
+    }
+
+    private func refreshAdaptiveFollowUp(after question: GiftDiscoveryQuestion, selectedOptionID: String) {
+        removeAdaptiveFollowUp(forAnchorQuestionID: question.id)
+
+        let existingFollowUpIDs = Set(giftQuizAdaptiveAnchorMap.values)
+        guard let followUp = GiftDiscoveryCatalog.adaptiveFollowUp(
+            forBaseQuestionID: question.id,
+            selectedOptionID: selectedOptionID,
+            existingFollowUpIDs: existingFollowUpIDs
+        ) else {
+            return
+        }
+
+        let insertionIndex = min(currentGiftQuestionIndex + 1, giftQuizQuestions.count)
+        giftQuizQuestions.insert(followUp, at: insertionIndex)
+        giftQuizAdaptiveAnchorMap[question.id] = followUp.id
+    }
+
+    private func removeAdaptiveFollowUp(forAnchorQuestionID questionID: String) {
+        guard let followUpID = giftQuizAdaptiveAnchorMap.removeValue(forKey: questionID) else { return }
+        giftQuizAnswers.removeValue(forKey: followUpID)
+
+        guard let followUpIndex = giftQuizQuestions.firstIndex(where: { $0.id == followUpID }) else { return }
+        giftQuizQuestions.remove(at: followUpIndex)
+
+        if followUpIndex < currentGiftQuestionIndex {
+            currentGiftQuestionIndex = max(0, currentGiftQuestionIndex - 1)
+        } else if currentGiftQuestionIndex >= giftQuizQuestions.count {
+            currentGiftQuestionIndex = max(0, giftQuizQuestions.count - 1)
         }
     }
 
@@ -1301,107 +1266,6 @@ struct GlorifyView: View {
             } else {
                 morningReminderStatus = "Morning reminders stayed off for now. You can turn them on later from Glorify."
             }
-        }
-    }
-
-    @ViewBuilder
-    private var creatorFeedSection: some View {
-        if isBibleSchoolCreatorSpaceUnlocked {
-            NavigationLink {
-                CreationFeedView(store: store)
-            } label: {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(alignment: .top, spacing: 14) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(OVTheme.orchid.opacity(0.42))
-                                .frame(width: 50, height: 50)
-
-                            Image(systemName: "photo.stack")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(OVTheme.midnight)
-                        }
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Creator feed")
-                                .font(OVTheme.heading(22))
-                                .foregroundStyle(OVTheme.midnight)
-                            Text("An aesthetic space for sharing what Jesus is inspiring in you.")
-                                .font(OVTheme.body(14))
-                                .foregroundStyle(OVTheme.ink.opacity(0.72))
-                        }
-                        Spacer()
-                        Text("Bible School")
-                            .font(OVTheme.body(11))
-                            .foregroundStyle(OVTheme.midnight)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(OVTheme.lemon.opacity(0.44))
-                            .clipShape(Capsule())
-                    }
-
-                    HStack(spacing: 8) {
-                        topChip("Longer posts")
-                        topChip("3 image slots")
-                        topChip("Comments")
-                    }
-
-                    HStack {
-                        Text("Open creator space")
-                            .font(OVTheme.heading(16))
-                            .foregroundStyle(.white)
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                        .background(OVTheme.midnight)
-                        .clipShape(Capsule())
-                }
-                .padding(OVTheme.cardPadding)
-                .background(
-                    LinearGradient(
-                        colors: [OVTheme.orchid.opacity(0.36), .white],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .glorifyCard()
-            }
-            .buttonStyle(.plain)
-        } else {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Bible School creator space")
-                    .font(OVTheme.heading(22))
-                    .foregroundStyle(OVTheme.midnight)
-
-                Text("Go beyond personal rhythm into a more communal creative feed with richer sharing, more room, and image attachments.")
-                    .font(OVTheme.body(14))
-                    .foregroundStyle(OVTheme.ink.opacity(0.74))
-
-                VStack(alignment: .leading, spacing: 8) {
-                    previewBullet("Share longer creation stories")
-                    previewBullet("Attach up to 3 images to a post")
-                    previewBullet("Reply inside an aesthetic creator feed")
-                }
-
-                Button {
-                    showSchoolPreview = true
-                } label: {
-                    Text("See creator feed preview")
-                        .font(OVTheme.heading(15))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
-                        .background(OVTheme.midnight)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(OVTheme.cardPadding)
-            .glorifyCard()
         }
     }
 
@@ -2059,7 +1923,6 @@ struct GlorifyView_Previews: PreviewProvider {
     static var previews: some View {
         GlorifyView(
             store: SoulJourneyStore(),
-            accessManager: SubscriptionAccessManager(),
             jumpTarget: .constant(nil)
         )
     }

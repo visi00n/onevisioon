@@ -1175,7 +1175,7 @@ extension WisdomCourse {
     static let bibleInAYearSchool = WisdomCourse(
         id: "bible-in-a-year-school",
         title: "Bible in a Year",
-        subtitle: "12 guided monthly checkpoints through the full KJV Bible.",
+        subtitle: "12 guided monthly checkpoints through the full Bible.",
         outcomes: [
             "Read the full Bible across one year with a guided monthly structure.",
             "Use anchor chapters to keep each month's main movement clear and memorable.",

@@ -1,5 +1,6 @@
 import AuthenticationServices
 import SwiftUI
+import UIKit
 
 struct OneVisioonHubView: View {
     @ObservedObject var store: SoulJourneyStore
@@ -157,16 +158,29 @@ struct ProfileView: View {
         ]
     }
 
+    private var habitReflectionEntries: [GiftTrainingCheckIn] {
+        store.giftTrainingCheckIns
+            .filter { !$0.reflection.trimmed.isEmpty }
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: OVTheme.cardSpacing) {
                     profileHeader
+                    editableProfileCard
+                    profileActionsCard
                     accountStatusCard
                     aboutYouCard
+                    studySnapshotCard
 
                     if let giftProfile = store.giftDiscoveryProfile {
                         giftProfileCard(giftProfile)
+                    }
+
+                    if !habitReflectionEntries.isEmpty {
+                        habitReflectionCard
                     }
                 }
                 .padding(.horizontal, OVTheme.screenHorizontalPadding)
@@ -203,6 +217,11 @@ struct ProfileView: View {
             Text("Your account and saved details.")
                 .font(OVTheme.body(15))
                 .foregroundStyle(OVTheme.ink.opacity(0.74))
+
+            Text(personalStatement)
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.78))
+                .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(OVTheme.cardPadding)
@@ -214,6 +233,83 @@ struct ProfileView: View {
             )
         )
         .premiumSurfaceCard(cornerRadius: 24)
+    }
+
+    private var editableProfileCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Edit profile")
+                .font(OVTheme.heading(22))
+                .foregroundStyle(OVTheme.ink)
+
+            TextField("Name", text: onboardingBinding(\.fullName))
+                .textFieldStyle(.roundedBorder)
+
+            TextField("Username", text: onboardingBinding(\.username))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+                .textFieldStyle(.roundedBorder)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Bio / testimony")
+                    .font(OVTheme.body(13))
+                    .foregroundStyle(OVTheme.ink.opacity(0.72))
+
+                TextEditor(text: publicProfileBinding(\.testimonial))
+                    .font(OVTheme.body(14))
+                    .frame(minHeight: 120)
+                    .scrollContentBackground(.hidden)
+                    .padding(10)
+                    .background(OVTheme.paper.opacity(0.96))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+
+            Text("Friends and public profiles are coming later, so this stays ready without pretending the social layer is live.")
+                .font(OVTheme.body(12))
+                .foregroundStyle(OVTheme.ink.opacity(0.62))
+        }
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 22)
+    }
+
+    private var profileActionsCard: some View {
+        VStack(spacing: 10) {
+            NavigationLink {
+                ProfileSettingsView(store: store)
+            } label: {
+                activeProfileRow(
+                    title: "Profile Settings",
+                    subtitle: "Review and edit the answers that shape your path.",
+                    systemImage: "slider.horizontal.3"
+                )
+            }
+            .buttonStyle(.plain)
+
+            comingSoonProfileRow(
+                title: "Friends",
+                subtitle: "Connect with people when community opens.",
+                systemImage: "person.2.fill"
+            )
+
+            comingSoonProfileRow(
+                title: "Achievements",
+                subtitle: "Milestones for consistency and lesson progress.",
+                systemImage: "trophy.fill"
+            )
+
+            comingSoonProfileRow(
+                title: "Badges",
+                subtitle: "Visual rewards for growth patterns.",
+                systemImage: "checkmark.seal.fill"
+            )
+
+            comingSoonProfileRow(
+                title: "Leaderboard",
+                subtitle: "Community rankings will unlock later.",
+                systemImage: "chart.bar.fill"
+            )
+        }
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 22)
     }
 
     private var aboutYouCard: some View {
@@ -266,6 +362,51 @@ struct ProfileView: View {
             }
 
             metricRow("Quiz completed", shortDate(profile.completedAt))
+        }
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 22)
+    }
+
+    private var habitReflectionCard: some View {
+        let latest = habitReflectionEntries.first
+
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Habit reflection")
+                .font(OVTheme.heading(22))
+                .foregroundStyle(OVTheme.ink)
+
+            Text("Your saved Glorify reflections live here with the date you submitted them.")
+                .font(OVTheme.body(13))
+                .foregroundStyle(OVTheme.ink.opacity(0.68))
+
+            if let latest {
+                metricRow("Latest", shortDate(latest.updatedAt))
+            }
+
+            NavigationLink {
+                HabitReflectionHistoryView(entries: habitReflectionEntries)
+            } label: {
+                HStack {
+                    Text("Open Habit Reflection")
+                        .font(OVTheme.heading(15))
+                        .foregroundStyle(.white)
+
+                    Spacer()
+
+                    Text("\(habitReflectionEntries.count)")
+                        .font(OVTheme.heading(13))
+                        .foregroundStyle(OVTheme.midnight)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(.white)
+                        .clipShape(Capsule())
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(OVTheme.midnight)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
         }
         .padding(OVTheme.cardPadding)
         .premiumSurfaceCard(cornerRadius: 22)
@@ -813,6 +954,339 @@ struct ProfileView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
+    private func activeProfileRow(title: String, subtitle: String, systemImage: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(OVTheme.midnight)
+                .frame(width: 40, height: 40)
+                .background(OVTheme.lemon.opacity(0.48))
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(OVTheme.heading(16))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Text(subtitle)
+                    .font(OVTheme.body(12))
+                    .foregroundStyle(OVTheme.ink.opacity(0.66))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(OVTheme.midnight)
+        }
+        .padding(14)
+        .background(OVTheme.paper.opacity(0.96))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(OVTheme.line, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func comingSoonProfileRow(title: String, subtitle: String, systemImage: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(OVTheme.midnight.opacity(0.45))
+                .frame(width: 40, height: 40)
+                .background(OVTheme.smoke.opacity(0.85))
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 8) {
+                    Text(title)
+                        .font(OVTheme.heading(16))
+                        .foregroundStyle(OVTheme.ink.opacity(0.5))
+
+                    Text("Coming soon")
+                        .font(OVTheme.body(10))
+                        .foregroundStyle(OVTheme.midnight.opacity(0.6))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(OVTheme.smoke)
+                        .clipShape(Capsule())
+                }
+
+                Text(subtitle)
+                    .font(OVTheme.body(12))
+                    .foregroundStyle(OVTheme.ink.opacity(0.46))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Spacer(minLength: 8)
+        }
+        .padding(14)
+        .background(OVTheme.smoke.opacity(0.42))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(OVTheme.line.opacity(0.7), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .opacity(0.72)
+        .accessibilityLabel("\(title), coming soon")
+    }
+
+    private func onboardingBinding(_ keyPath: WritableKeyPath<OnboardingAnswerSet, String>) -> Binding<String> {
+        Binding {
+            store.onboardingProfile[keyPath: keyPath]
+        } set: { value in
+            var profile = store.onboardingProfile
+            profile[keyPath: keyPath] = value
+            store.onboardingProfile = profile
+        }
+    }
+
+    private func publicProfileBinding(_ keyPath: WritableKeyPath<PublicProfileSettings, String>) -> Binding<String> {
+        Binding {
+            store.publicProfileSettings[keyPath: keyPath]
+        } set: { value in
+            store.publicProfileSettings[keyPath: keyPath] = value
+        }
+    }
+
+    private func shortDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+private struct ProfileSettingsView: View {
+    @ObservedObject var store: SoulJourneyStore
+
+    private let faithStageOptions = [
+        "I feel far from God",
+        "I'm trying, but I'm not consistent",
+        "I'm growing, but I need structure",
+        "I'm doing well, but I want more"
+    ]
+
+    private let cadenceOptions = [
+        "Every day",
+        "Most days",
+        "A few times a week",
+        "Only when I really need it"
+    ]
+
+    private let supportOptions = [
+        "A simple plan",
+        "Daily Bible guidance",
+        "Real accountability",
+        "Encouragement when I slip",
+        "Proof that I'm making progress"
+    ]
+
+    private let spiritualStruggleOptions = StruggleSupportCatalog.spiritualStruggleTitles
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: OVTheme.cardSpacing) {
+                settingsHeader
+                personalDetailsCard
+                pathAnswersCard
+                goalsCard
+            }
+            .padding(.horizontal, OVTheme.screenHorizontalPadding)
+            .padding(.vertical, OVTheme.screenVerticalPadding)
+        }
+        .background(OVTheme.mainBackground.ignoresSafeArea())
+        .navigationTitle("Profile Settings")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var settingsHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Edit your path")
+                .font(OVTheme.display(32))
+                .foregroundStyle(OVTheme.midnight)
+
+            Text("These answers shape your Bible guidance, Freedom topic, and profile details.")
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.72))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 24, fill: OVTheme.elevatedCard)
+    }
+
+    private var personalDetailsCard: some View {
+        settingsCard(title: "Personal details") {
+            settingsField("Name", text: onboardingBinding(\.fullName))
+            settingsField("Username", text: onboardingBinding(\.username), autocapitalization: .never)
+            settingsField("Email", text: onboardingBinding(\.email), keyboardType: .emailAddress, autocapitalization: .never)
+            settingsField("Age", text: onboardingBinding(\.age), keyboardType: .numberPad, autocapitalization: .never)
+            settingsField("Country", text: onboardingBinding(\.country))
+            settingsField("Area code", text: onboardingBinding(\.usaAreaCode), keyboardType: .numberPad, autocapitalization: .never)
+        }
+    }
+
+    private var pathAnswersCard: some View {
+        settingsCard(title: "Path answers") {
+            settingsMenu("Faith stage", selection: onboardingBinding(\.faithStage), options: faithStageOptions)
+            settingsMenu("Weekly rhythm", selection: onboardingBinding(\.weeklyCommitment), options: cadenceOptions)
+            settingsMenu("Support need", selection: onboardingBinding(\.supportNeed), options: supportOptions)
+            settingsMenu("Spiritual battle", selection: onboardingBinding(\.spiritualStruggle), options: spiritualStruggleOptions)
+            settingsEditor("Main challenge", text: onboardingBinding(\.biggestChallenge), minHeight: 80)
+            settingsEditor("Life vision", text: onboardingBinding(\.lifeVision), minHeight: 96)
+        }
+    }
+
+    private var goalsCard: some View {
+        settingsCard(title: "Growth goals") {
+            settingsField("Mindset goal", text: onboardingBinding(\.selectedMindsetGoal))
+            settingsField("Health goal", text: onboardingBinding(\.selectedHealthGoal))
+            settingsField("Purpose goal", text: onboardingBinding(\.selectedPurposeGoal))
+            settingsField("Community goal", text: onboardingBinding(\.selectedCommunityGoal))
+        }
+    }
+
+    private func settingsCard<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title)
+                .font(OVTheme.heading(22))
+                .foregroundStyle(OVTheme.ink)
+
+            content()
+        }
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 22)
+    }
+
+    private func settingsField(
+        _ title: String,
+        text: Binding<String>,
+        keyboardType: UIKeyboardType = .default,
+        autocapitalization: TextInputAutocapitalization = .words
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(OVTheme.body(13))
+                .foregroundStyle(OVTheme.ink.opacity(0.68))
+
+            TextField(title, text: text)
+                .keyboardType(keyboardType)
+                .textInputAutocapitalization(autocapitalization)
+                .autocorrectionDisabled(true)
+                .textFieldStyle(.roundedBorder)
+        }
+    }
+
+    private func settingsEditor(_ title: String, text: Binding<String>, minHeight: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(OVTheme.body(13))
+                .foregroundStyle(OVTheme.ink.opacity(0.68))
+
+            TextEditor(text: text)
+                .font(OVTheme.body(14))
+                .frame(minHeight: minHeight)
+                .scrollContentBackground(.hidden)
+                .padding(10)
+                .background(OVTheme.paper.opacity(0.96))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+
+    private func settingsMenu(_ title: String, selection: Binding<String>, options: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(OVTheme.body(13))
+                .foregroundStyle(OVTheme.ink.opacity(0.68))
+
+            Menu {
+                ForEach(options, id: \.self) { option in
+                    Button(option) {
+                        selection.wrappedValue = option
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(selection.wrappedValue.isEmpty ? "Choose" : selection.wrappedValue)
+                        .font(OVTheme.heading(14))
+                        .foregroundStyle(selection.wrappedValue.isEmpty ? OVTheme.ink.opacity(0.48) : OVTheme.midnight)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(OVTheme.midnight.opacity(0.72))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(OVTheme.paper.opacity(0.96))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(OVTheme.line, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func onboardingBinding(_ keyPath: WritableKeyPath<OnboardingAnswerSet, String>) -> Binding<String> {
+        Binding {
+            store.onboardingProfile[keyPath: keyPath]
+        } set: { value in
+            var profile = store.onboardingProfile
+            profile[keyPath: keyPath] = value
+            store.onboardingProfile = profile
+        }
+    }
+}
+
+private struct HabitReflectionHistoryView: View {
+    let entries: [GiftTrainingCheckIn]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Habit reflection")
+                        .font(OVTheme.display(34))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text("Saved reflections from your Glorify habit training.")
+                        .font(OVTheme.body(14))
+                        .foregroundStyle(OVTheme.ink.opacity(0.72))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(OVTheme.cardPadding)
+                .premiumSurfaceCard(cornerRadius: 24)
+
+                ForEach(entries) { entry in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(shortDate(entry.updatedAt))
+                            .font(OVTheme.body(12))
+                            .foregroundStyle(OVTheme.gold)
+
+                        Text(entry.reflection)
+                            .font(OVTheme.body(15))
+                            .foregroundStyle(OVTheme.ink.opacity(0.82))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(18)
+                    .premiumSurfaceCard(cornerRadius: 20, fill: OVTheme.elevatedCard)
+                }
+            }
+            .padding(.horizontal, OVTheme.screenHorizontalPadding)
+            .padding(.vertical, OVTheme.screenVerticalPadding)
+        }
+        .background(OVTheme.mainBackground.ignoresSafeArea())
+        .navigationTitle("Habit Reflection")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
     private func shortDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -896,7 +1370,7 @@ private struct AboutOneVisioonView: View {
 
                 aboutCard(
                     title: "What is live",
-                    body: "Full KJV Bible access, daily verse, prayer help, life-situation guides, gift discovery, Bible notes, and clean study paths."
+                    body: "Full Bible access in KJV 1769, ESV, ASV, CSB, NIV, and Greek Bible, daily verse, prayer help, life-situation guides, gift discovery, Bible notes, and clean study paths."
                 )
 
                 aboutCard(
@@ -952,6 +1426,11 @@ private struct ProfilePrivacyPolicySheet: View {
                     policySection(
                         title: "Progress Storage",
                         body: "One Visioon keeps a local copy of your progress on this device and can also sync your key study data with Supabase when you sign in."
+                    )
+
+                    policySection(
+                        title: "Bible Translation Notices",
+                        body: "This build includes KJV 1769, ESV, ASV, CSB, NIV, Greek Old Testament / Septuagint, SBL Greek New Testament, and Greek word-study data with required attribution notices. Full wording is published at unovisioon.com/privacy-policy."
                     )
 
                     policySection(

@@ -2,16 +2,13 @@ import SwiftUI
 
 struct PrayerFeedView: View {
     @ObservedObject var store: SoulJourneyStore
-    @EnvironmentObject private var authManager: AuthSessionManager
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 18) {
                     header
-                    if !authManager.isSignedIn {
-                        signInCard
-                    }
+                    statusCard
                     folderButtons
                 }
                 .padding(.horizontal, 20)
@@ -33,20 +30,20 @@ struct PrayerFeedView: View {
             Text("Community")
                 .font(OVTheme.display(36))
                 .foregroundStyle(OVTheme.midnight)
-            Text("Talk, pray, and grow with other believers.")
+            Text("Community rooms are coming after launch as One Visioon grows.")
                 .font(OVTheme.body(15))
                 .foregroundStyle(OVTheme.ink.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var signInCard: some View {
+    private var statusCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Sign in for live rooms")
+            Text("Community is coming soon")
                 .font(OVTheme.heading(18))
                 .foregroundStyle(OVTheme.ink)
 
-            Text("General chat, your small group, local chat, and live prayer posts all use your secure account session.")
+            Text("For the first launch, One Visioon is focused on Bible growth and user feedback. Live rooms will open later when there are enough people to make them meaningful.")
                 .font(OVTheme.body(14))
                 .foregroundStyle(OVTheme.ink.opacity(0.72))
         }
@@ -57,70 +54,15 @@ struct PrayerFeedView: View {
 
     private var folderButtons: some View {
         VStack(spacing: 14) {
-            NavigationLink {
-                LiveCommunityRoomView(
-                    store: store,
-                    room: CommunityRoomDescriptor(
-                        kind: .smallGroup,
-                        key: store.preferredSmallGroupKey,
-                        title: "Small Group"
-                    )
-                )
-            } label: {
-                communityFolderButton("Small Group")
-            }
-            .buttonStyle(.plain)
-
-            NavigationLink {
-                LiveCommunityRoomView(
-                    store: store,
-                    room: CommunityRoomDescriptor(
-                        kind: .general,
-                        key: "general-chat",
-                        title: "General"
-                    )
-                )
-            } label: {
-                communityFolderButton("General")
-            }
-            .buttonStyle(.plain)
-
-            NavigationLink {
-                PrayerFeedRoomView(store: store)
-            } label: {
-                communityFolderButton("Prayer Feed")
-            }
-            .buttonStyle(.plain)
+            communityComingSoonButton("Small Group")
+            communityComingSoonButton("General Chat")
 
             if store.usesUnitedStatesLocalGroup {
-                NavigationLink {
-                    LocalCommunityRoomView(store: store)
-                } label: {
-                    communityFolderButton("Local")
-                }
-                .buttonStyle(.plain)
+                communityComingSoonButton("Local Chat")
             }
 
             communityComingSoonButton("Online Events")
         }
-    }
-
-    private func communityFolderButton(_ title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(OVTheme.heading(24))
-                .foregroundStyle(OVTheme.ink)
-
-            Spacer()
-
-            Image(systemName: "arrow.right")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(OVTheme.midnight)
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 20)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
     private func communityComingSoonButton(_ title: String) -> some View {
@@ -143,6 +85,7 @@ struct PrayerFeedView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(OVTheme.line, lineWidth: 1)
         )
+        .opacity(0.82)
     }
 }
 

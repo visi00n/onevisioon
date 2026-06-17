@@ -4,6 +4,7 @@ import UIKit
 struct ScriptureHomeView: View {
     @ObservedObject var store: SoulJourneyStore
     let openGlorifyGifts: () -> Void
+    let openProfile: () -> Void
 
     @State private var showStreakCalendarSheet = false
     @State private var showBibleNotesSheet = false
@@ -15,7 +16,7 @@ struct ScriptureHomeView: View {
     }
 
     private var dailyVerse: DailyBibleVerse? {
-        BibleDataProvider.dailyVerse()
+        BibleDataProvider.dailyVerse(version: store.selectedBibleVersion)
     }
 
     private var readingPlan: ReadingRecommendationPlan {
@@ -27,8 +28,8 @@ struct ScriptureHomeView: View {
         )
     }
 
-    private var featuredSituationGuide: LifeSituationGuide {
-        LifeSituationGuide.recommended(for: store.onboardingProfile)
+    private var focusedStruggleTopic: StruggleSupportTopic {
+        StruggleSupportCatalog.selectedTopic(for: store.onboardingProfile)
     }
 
     private var dailyGiftFocus: GiftDailyFocus? {
@@ -48,13 +49,14 @@ struct ScriptureHomeView: View {
                         quickAccessGrid
                         howToPrayCard
                         iFeelCard
+                        struggleHelperCard
                         whereShouldIReadCard(readingPlan)
                         if let dailyGiftFocus {
                             giftFocusCard(dailyGiftFocus)
                         } else {
                             discoverGiftsCard
                         }
-                        lifeSituationGuidesCard
+                        profileCalloutCard
                     }
                 }
                 .padding(.horizontal, OVTheme.screenHorizontalPadding)
@@ -154,6 +156,8 @@ struct ScriptureHomeView: View {
                             .font(OVTheme.heading(14))
                             .foregroundStyle(OVTheme.midnight)
                             .frame(maxWidth: .infinity)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
                             .padding(.vertical, 12)
                             .background(feeling.accent.opacity(0.16))
                             .overlay(
@@ -171,82 +175,88 @@ struct ScriptureHomeView: View {
         .ovSurfaceCard(cornerRadius: 24)
     }
 
-    private var lifeSituationGuidesCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
+    private var struggleHelperCard: some View {
+        let topic = focusedStruggleTopic
+
+        return NavigationLink {
+            StruggleSupportView(store: store)
+        } label: {
+            HStack(alignment: .top, spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(featuredSituationGuide.accent.opacity(0.22))
+                        .fill(Color(hex: topic.accentHex).opacity(0.28))
                         .frame(width: 48, height: 48)
 
-                    Image(systemName: "heart.text.square")
+                    Image(systemName: "shield.lefthalf.filled")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(OVTheme.midnight)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Life situation study guides")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Freedom")
                         .font(OVTheme.heading(20))
                         .foregroundStyle(OVTheme.ink)
 
-                    Text("If life feels heavy, this gives you a simple place to start with Scripture, prayer, and one clear next step.")
+                    Text("Daily help for \(topic.title.lowercased())")
+                        .font(OVTheme.heading(15))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text("Open Scripture, prayer, and one next step for the area you chose in onboarding.")
                         .font(OVTheme.body(14))
                         .foregroundStyle(OVTheme.muted)
+                        .lineLimit(3)
                 }
+
+                Spacer(minLength: 10)
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(OVTheme.midnight)
+                    .padding(.top, 4)
             }
-
-            NavigationLink {
-                LifeSituationGuideDetailView(store: store, guide: featuredSituationGuide)
-            } label: {
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text(store.onboardingProfile.biggestChallenge.trimmed.isEmpty ? "Start here" : "Recommended for you")
-                            .font(OVTheme.body(11))
-                            .foregroundStyle(OVTheme.midnight)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
-                            .background(OVTheme.gold.opacity(0.18))
-                            .overlay(
-                                Capsule()
-                                    .stroke(OVTheme.gold.opacity(0.55), lineWidth: 1)
-                            )
-                            .clipShape(Capsule())
-
-                        Text(featuredSituationGuide.title)
-                            .font(OVTheme.heading(17))
-                            .foregroundStyle(OVTheme.midnight)
-
-                        Text(featuredSituationGuide.subtitle)
-                            .font(OVTheme.body(13))
-                            .foregroundStyle(OVTheme.ink.opacity(0.76))
-                            .lineLimit(2)
-                    }
-
-                    Spacer(minLength: 10)
-
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(OVTheme.midnight)
-                        .frame(width: 34, height: 34)
-                        .background(OVTheme.gold.opacity(0.28))
-                        .clipShape(Circle())
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(OVTheme.lemon.opacity(0.38))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(OVTheme.gold.opacity(0.92), lineWidth: 1.7)
-                )
-                .shadow(color: OVTheme.gold.opacity(0.16), radius: 10, x: 0, y: 5)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            }
-            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(OVTheme.cardPadding)
+            .ovSurfaceCard(cornerRadius: 22)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(OVTheme.cardPadding)
-        .ovSurfaceCard(cornerRadius: 24)
+        .buttonStyle(.plain)
+    }
+
+    private var profileCalloutCard: some View {
+        Button(action: openProfile) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(OVTheme.lemon.opacity(0.48))
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: "person.crop.circle.fill")
+                        .font(.system(size: 21, weight: .semibold))
+                        .foregroundStyle(OVTheme.midnight)
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Go to your Profile")
+                        .font(OVTheme.heading(20))
+                        .foregroundStyle(OVTheme.ink)
+
+                    Text("Edit your name, bio, testimony, settings, and saved growth details.")
+                        .font(OVTheme.body(14))
+                        .foregroundStyle(OVTheme.muted)
+                        .multilineTextAlignment(.leading)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(OVTheme.midnight)
+                    .padding(.top, 5)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(OVTheme.cardPadding)
+            .premiumSurfaceCard(cornerRadius: 22, fill: OVTheme.elevatedCard)
+        }
+        .buttonStyle(.plain)
     }
 
     private func whereShouldIReadCard(_ plan: ReadingRecommendationPlan) -> some View {
@@ -300,7 +310,10 @@ struct ScriptureHomeView: View {
     }
 
     private var quickAccessGrid: some View {
-        let chapter = BibleDataProvider.chapter(at: continueLocation)
+        let chapter = BibleDataProvider.chapter(
+            at: continueLocation,
+            version: store.selectedBibleVersion
+        )
 
         return LazyVGrid(
             columns: [
@@ -435,13 +448,16 @@ struct ScriptureHomeView: View {
 
                 Spacer()
 
-                Text("Updates daily")
-                    .font(OVTheme.body(11))
-                    .foregroundStyle(OVTheme.midnight)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(OVTheme.smoke)
-                    .clipShape(Capsule())
+                HStack(spacing: 6) {
+                    Text(dailyVerse.version.shortName)
+                    Text("Updates daily")
+                }
+                .font(OVTheme.body(11))
+                .foregroundStyle(OVTheme.midnight)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(OVTheme.smoke)
+                .clipShape(Capsule())
             }
 
             NavigationLink {
@@ -685,6 +701,34 @@ struct FullBibleView: View {
         NavigationStack {
             BibleLibraryScreen(store: store, externalTarget: $externalTarget)
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Menu {
+                            ForEach(BibleVersion.allCases) { version in
+                                Button {
+                                    store.setBibleVersion(version)
+                                } label: {
+                                    if version == store.selectedBibleVersion {
+                                        Label(version.shortName, systemImage: "checkmark")
+                                    } else {
+                                        Text(version.shortName)
+                                    }
+                                }
+                            }
+                        } label: {
+                            Text(store.selectedBibleVersion.shortName)
+                                .font(OVTheme.heading(13))
+                                .foregroundStyle(OVTheme.midnight)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(OVTheme.elevatedCard)
+                                .overlay(
+                                    Capsule()
+                                        .stroke(OVTheme.line, lineWidth: 1)
+                                )
+                                .clipShape(Capsule())
+                        }
+                    }
+
                     ToolbarItem(placement: .topBarTrailing) {
                         AppInfoButton()
                     }
@@ -897,6 +941,7 @@ struct BibleLibraryScreen: View {
     @State private var query = ""
     @State private var jumpTarget: BibleReferenceTarget?
     @State private var showNotesSheet = false
+    @FocusState private var isSearchFocused: Bool
 
     private let bookColumns = [
         GridItem(.flexible(), spacing: 12),
@@ -908,15 +953,33 @@ struct BibleLibraryScreen: View {
     }
 
     private var visibleOldTestamentBooks: [BibleBook] {
-        filterBooks(BibleDataProvider.oldTestamentBooks)
+        filterBooks(BibleDataProvider.oldTestamentBooks(for: store.selectedBibleVersion))
     }
 
     private var visibleNewTestamentBooks: [BibleBook] {
-        filterBooks(BibleDataProvider.newTestamentBooks)
+        filterBooks(BibleDataProvider.newTestamentBooks(for: store.selectedBibleVersion))
+    }
+
+    private var continueLocation: BibleLocation {
+        if let lastReadBibleLocation = store.lastReadBibleLocation,
+           BibleDataProvider.chapter(at: lastReadBibleLocation, version: store.selectedBibleVersion) != nil {
+            return lastReadBibleLocation
+        }
+
+        if let firstBook = BibleDataProvider.books(for: store.selectedBibleVersion).first {
+            return BibleLocation(book: firstBook.name, chapter: 1)
+        }
+
+        return store.defaultBibleLocation
     }
 
     private var suggestedTarget: BibleReferenceTarget? {
-        BibleDataProvider.resolveReference(from: cleanedQuery)
+        guard let target = BibleDataProvider.resolveReference(from: cleanedQuery),
+              BibleDataProvider.chapter(at: target.location, version: store.selectedBibleVersion) != nil else {
+            return nil
+        }
+
+        return target
     }
 
     var body: some View {
@@ -930,6 +993,7 @@ struct BibleLibraryScreen: View {
             .padding(.horizontal, OVTheme.screenHorizontalPadding)
             .padding(.vertical, OVTheme.screenVerticalPadding)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(OVTheme.mainBackground.ignoresSafeArea())
         .navigationTitle("Bible")
         .navigationBarTitleDisplayMode(.inline)
@@ -983,7 +1047,10 @@ struct BibleLibraryScreen: View {
             TextField("Try Genesis 1 or John 3:16", text: $query)
                 .font(OVTheme.body(16))
                 .textInputAutocapitalization(.words)
+                .autocorrectionDisabled(true)
+                .keyboardType(.default)
                 .submitLabel(.go)
+                .focused($isSearchFocused)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .background(OVTheme.smoke.opacity(0.9))
@@ -992,13 +1059,16 @@ struct BibleLibraryScreen: View {
                         .stroke(OVTheme.line, lineWidth: 1)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .onSubmit {
                     guard let suggestedTarget else { return }
+                    isSearchFocused = false
                     jumpTarget = suggestedTarget
                 }
 
             if let suggestedTarget {
                 Button {
+                    isSearchFocused = false
                     jumpTarget = suggestedTarget
                 } label: {
                     HStack {
@@ -1035,7 +1105,7 @@ struct BibleLibraryScreen: View {
         NavigationLink {
             BibleChapterReaderView(
                 store: store,
-                target: BibleReferenceTarget(location: store.continueBibleLocation, verse: nil)
+                target: BibleReferenceTarget(location: continueLocation, verse: nil)
             )
         } label: {
             HStack(spacing: 12) {
@@ -1044,7 +1114,7 @@ struct BibleLibraryScreen: View {
                         .font(OVTheme.heading(16))
                         .foregroundStyle(OVTheme.ink)
 
-                    Text("\(store.continueBibleLocation.book) \(store.continueBibleLocation.chapter)")
+                    Text("\(continueLocation.book) \(continueLocation.chapter)")
                         .font(OVTheme.body(14))
                         .foregroundStyle(OVTheme.midnight)
                 }
@@ -1065,6 +1135,10 @@ struct BibleLibraryScreen: View {
 
         let target = externalTarget
         self.externalTarget = nil
+
+        guard BibleDataProvider.chapter(at: target.location, version: store.selectedBibleVersion) != nil else {
+            return
+        }
 
         if jumpTarget?.id == target.id {
             jumpTarget = nil
@@ -1092,7 +1166,7 @@ struct BibleLibraryScreen: View {
             }
 
             if books.isEmpty {
-                Text("No books match that search.")
+                Text(emptyMessage(for: title))
                     .font(OVTheme.body(13))
                     .foregroundStyle(OVTheme.muted)
                     .padding(.vertical, 8)
@@ -1109,6 +1183,14 @@ struct BibleLibraryScreen: View {
                 }
             }
         }
+    }
+
+    private func emptyMessage(for testamentTitle: String) -> String {
+        if store.selectedBibleVersion.isNewTestamentOnly && testamentTitle == "Old Testament" {
+            return "This translation does not include Old Testament books."
+        }
+
+        return "No books match that search."
     }
 
     private func bookCard(_ book: BibleBook) -> some View {
@@ -1201,7 +1283,7 @@ struct BibleBookDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 homeStatChip("Chapters", "\(book.chapterCount)")
-                homeStatChip("Version", "KJV")
+                homeStatChip("Version", store.selectedBibleVersion.shortName)
 
                 if let lastReadBibleLocation = store.lastReadBibleLocation,
                    lastReadBibleLocation.book == book.name {
@@ -1251,18 +1333,29 @@ struct BibleChapterReaderView: View {
     @State private var showNoteComposerSheet = false
     @State private var noteDraft = ""
     @State private var feedbackMessage = ""
-    @State private var isSilentMode = false
+    @State private var chapterSwipeTarget: BibleReferenceTarget?
+    @State private var isHandlingChapterSwipe = false
+    @State private var originalLanguagePassage: OriginalLanguageStudyPassage?
 
     private var chapter: BibleChapter? {
-        BibleDataProvider.chapter(at: target.location)
+        BibleDataProvider.chapter(
+            at: target.location,
+            version: store.selectedBibleVersion
+        )
     }
 
     private var previousLocation: BibleLocation? {
-        BibleDataProvider.previousChapter(before: target.location)
+        BibleDataProvider.previousChapter(
+            before: target.location,
+            version: store.selectedBibleVersion
+        )
     }
 
     private var nextLocation: BibleLocation? {
-        BibleDataProvider.nextChapter(after: target.location)
+        BibleDataProvider.nextChapter(
+            after: target.location,
+            version: store.selectedBibleVersion
+        )
     }
 
     private var hasActiveSelection: Bool {
@@ -1282,7 +1375,18 @@ struct BibleChapterReaderView: View {
 
     private var selectedShareText: String {
         selectedVerses.map { verse in
-            "\(verseReference(for: verse))\n\(verse.text)"
+            var lines = [
+                verseReference(for: verse),
+                verse.text
+            ]
+
+            if store.selectedBibleVersion.isOriginalLanguage,
+               let englishText = englishVerseText(for: verse) {
+                lines.append("English")
+                lines.append(englishText)
+            }
+
+            return lines.joined(separator: "\n")
         }
         .joined(separator: "\n\n")
     }
@@ -1302,43 +1406,22 @@ struct BibleChapterReaderView: View {
             if let chapter {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        VStack(alignment: .leading, spacing: isSilentMode ? 8 : 14) {
-                            if !isSilentMode {
-                                chapterNavigation
-                            }
+                        VStack(alignment: .leading, spacing: 12) {
+                            chapterNavigation
                             verseList(chapter)
-                            if !isSilentMode {
-                                chapterNavigation
-                            }
+                            chapterNavigation
                         }
                         .padding(.horizontal, OVTheme.screenHorizontalPadding)
                         .padding(.vertical, OVTheme.screenVerticalPadding)
                     }
+                    .scrollDismissesKeyboard(.interactively)
                     .background(OVTheme.mainBackground.ignoresSafeArea())
                     .navigationTitle(chapter.title)
                     .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.18)) {
-                                    isSilentMode.toggle()
-                                }
-                            } label: {
-                                Image(systemName: isSilentMode ? "moon.fill" : "moon")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(OVTheme.midnight)
-                                    .padding(10)
-                                    .background(OVTheme.elevatedCard)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(OVTheme.line, lineWidth: 1)
-                                    )
-                                    .clipShape(Circle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(isSilentMode ? "Exit silent mode" : "Enter silent mode")
-                        }
+                    .navigationDestination(item: $chapterSwipeTarget) { target in
+                        BibleChapterReaderView(store: store, target: target)
                     }
+                    .simultaneousGesture(chapterSwipeGesture)
                     .onAppear {
                         store.saveLastReadBibleLocation(target.location)
                         guard let verse = target.verse, !hasScrolledToInitialVerse else { return }
@@ -1358,16 +1441,14 @@ struct BibleChapterReaderView: View {
                         }
                     }
                     .overlay(alignment: .bottomTrailing) {
-                        if !isSilentMode {
-                            BibleNotesFloatingButton(noteCount: store.sortedBibleVerseNotes.count) {
-                                showNotesSheet = true
-                            }
-                            .padding(.trailing, 20)
-                            .padding(.bottom, hasActiveSelection ? 112 : 18)
+                        BibleNotesFloatingButton(noteCount: store.sortedBibleVerseNotes.count) {
+                            showNotesSheet = true
                         }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, hasActiveSelection ? 112 : 18)
                     }
                     .overlay(alignment: .top) {
-                        if !feedbackMessage.isEmpty && !isSilentMode {
+                        if !feedbackMessage.isEmpty {
                             Text(feedbackMessage)
                                 .font(OVTheme.body(13))
                                 .foregroundStyle(.white)
@@ -1395,6 +1476,9 @@ struct BibleChapterReaderView: View {
                                 showFeedback("Note saved")
                             }
                         }
+                    }
+                    .sheet(item: $originalLanguagePassage) { passage in
+                        OriginalLanguageStudySheet(passage: passage)
                     }
                 }
             } else {
@@ -1441,8 +1525,43 @@ struct BibleChapterReaderView: View {
         }
     }
 
+    private var chapterSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 72, coordinateSpace: .local)
+            .onEnded { value in
+                guard !isHandlingChapterSwipe else { return }
+
+                let actualHorizontal = value.translation.width
+                let actualVertical = value.translation.height
+                let predictedHorizontal = value.predictedEndTranslation.width
+                let predictedVertical = value.predictedEndTranslation.height
+
+                guard abs(actualHorizontal) > 90,
+                      abs(predictedHorizontal) > 120,
+                      abs(actualHorizontal) > abs(actualVertical) * 1.4,
+                      abs(predictedHorizontal) > abs(predictedVertical) * 1.65 else { return }
+
+                let destination: BibleLocation?
+                if predictedHorizontal < 0 {
+                    destination = nextLocation
+                } else {
+                    destination = previousLocation
+                }
+
+                guard let destination else { return }
+
+                isHandlingChapterSwipe = true
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    chapterSwipeTarget = BibleReferenceTarget(location: destination, verse: nil)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    isHandlingChapterSwipe = false
+                }
+            }
+    }
+
     private func verseList(_ chapter: BibleChapter) -> some View {
-        VStack(alignment: .leading, spacing: isSilentMode ? 4 : 10) {
+        VStack(alignment: .leading, spacing: 4) {
             ForEach(chapter.verses) { verse in
                 let reference = verseReference(for: verse)
                 let isSelected = selectedVerseNumbers.contains(verse.verse)
@@ -1464,13 +1583,34 @@ struct BibleChapterReaderView: View {
                     }
                     .frame(width: 30, alignment: .leading)
 
-                    Text(verse.text)
-                        .font(OVTheme.body(17))
-                        .foregroundStyle(OVTheme.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .lineSpacing(2)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(verse.text)
+                            .font(OVTheme.body(17))
+                            .foregroundStyle(OVTheme.ink)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .lineSpacing(4)
+
+                        if store.selectedBibleVersion.isOriginalLanguage,
+                           isSelected,
+                           let englishText = englishVerseText(for: verse) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("English")
+                                    .font(OVTheme.body(11))
+                                    .foregroundStyle(OVTheme.gold)
+
+                                Text(englishText)
+                                    .font(OVTheme.body(15))
+                                    .foregroundStyle(OVTheme.ink.opacity(0.72))
+                                    .lineSpacing(3)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 4)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(isSilentMode ? 12 : 16)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 10)
                 .background(
                     verseBackground(
                         isSelected: isSelected,
@@ -1545,6 +1685,15 @@ struct BibleChapterReaderView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
+                    if OriginalLanguageStudyProvider.supportsOriginalLanguage(for: target.location) {
+                        Button {
+                            openOriginalLanguageStudy()
+                        } label: {
+                            originalLanguageActionChip
+                        }
+                        .buttonStyle(.plain)
+                    }
+
                     Button {
                         UIPasteboard.general.string = selectedShareText
                         showFeedback("Copied selection")
@@ -1604,8 +1753,43 @@ struct BibleChapterReaderView: View {
         .ovSurfaceCard(cornerRadius: 22, fill: OVTheme.elevatedCard, shadowOpacity: 0.1)
     }
 
+    private var originalLanguageActionChip: some View {
+        HStack(spacing: 8) {
+            Text("Ἑ")
+                .font(OVTheme.heading(14))
+
+            Text("Greek study")
+                .font(OVTheme.heading(13))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(OVTheme.midnight)
+        .clipShape(Capsule())
+    }
+
+    private func openOriginalLanguageStudy() {
+        guard let passage = OriginalLanguageStudyProvider.passage(
+            for: target.location,
+            selectedVerses: selectedVerses,
+            selectedVersion: store.selectedBibleVersion
+        ) else {
+            showFeedback("Greek study is not available here yet")
+            return
+        }
+
+        originalLanguagePassage = passage
+    }
+
     private func verseReference(for verse: BibleVerse) -> String {
         "\(target.location.book) \(target.location.chapter):\(verse.verse)"
+    }
+
+    private func englishVerseText(for verse: BibleVerse) -> String? {
+        BibleDataProvider.chapter(at: target.location, version: .esv)?
+            .verses
+            .first(where: { $0.verse == verse.verse })?
+            .text
     }
 
     private func verseBackground(
@@ -1624,15 +1808,11 @@ struct BibleChapterReaderView: View {
             return highlightFill(for: highlightStyle)
         }
 
-        if isSilentMode {
-            return .clear
-        }
-
         if isFocused {
-            return OVTheme.smoke
+            return OVTheme.smoke.opacity(0.72)
         }
 
-        return OVTheme.elevatedCard
+        return .clear
     }
 
     private func verseStroke(
@@ -1651,15 +1831,11 @@ struct BibleChapterReaderView: View {
             return highlightStroke(for: highlightStyle)
         }
 
-        if isSilentMode {
-            return isFocused ? OVTheme.line.opacity(0.72) : .clear
-        }
-
         if isFocused {
-            return OVTheme.line.opacity(0.95)
+            return OVTheme.line.opacity(0.72)
         }
 
-        return OVTheme.line
+        return .clear
     }
 
     private func toggleVerseSelection(_ verseNumber: Int, activateSelection: Bool = false) {
@@ -1708,6 +1884,215 @@ struct BibleChapterReaderView: View {
             if feedbackMessage == message {
                 feedbackMessage = ""
             }
+        }
+    }
+}
+
+private struct OriginalLanguageStudySheet: View {
+    let passage: OriginalLanguageStudyPassage
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedToken: OriginalLanguageWordToken?
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
+                    headerCard
+                    selectedTranslationCard
+
+                    ForEach(passage.originalVerses) { verse in
+                        originalVerseCard(verse)
+                    }
+
+                    if let selectedToken {
+                        tokenDetailCard(selectedToken)
+                    } else {
+                        Text("Tap any Greek word to see what it means here, how to pronounce it, the English used in this verse, Strong's number, and grammar.")
+                            .font(OVTheme.body(13))
+                            .foregroundStyle(OVTheme.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(OVTheme.cardPadding)
+                            .ovSurfaceCard(cornerRadius: 20)
+                    }
+                }
+                .padding(.horizontal, OVTheme.screenHorizontalPadding)
+                .padding(.vertical, OVTheme.screenVerticalPadding)
+            }
+            .background(OVTheme.mainBackground.ignoresSafeArea())
+            .navigationTitle("Greek study")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(OVTheme.heading(14))
+                    .foregroundStyle(OVTheme.midnight)
+                }
+            }
+        }
+    }
+
+    private var headerCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(passage.referenceTitle)
+                .font(OVTheme.display(30))
+                .foregroundStyle(OVTheme.midnight)
+
+            Text("Original-language layer: \(passage.languageTitle)")
+                .font(OVTheme.heading(14))
+                .foregroundStyle(OVTheme.gold)
+
+            Text("This shows your selected translation first, then the Greek text underneath. Word glosses are study helps, not one-to-one replacements for the full verse meaning.")
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.72))
+
+            Text(passage.attribution)
+                .font(OVTheme.body(11))
+                .foregroundStyle(OVTheme.muted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 24, fill: OVTheme.elevatedCard)
+    }
+
+    private var selectedTranslationCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Selected \(passage.selectedVersionName)")
+                .font(OVTheme.heading(18))
+                .foregroundStyle(OVTheme.midnight)
+
+            ForEach(passage.selectedVerses) { verse in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(verse.reference)
+                        .font(OVTheme.heading(12))
+                        .foregroundStyle(OVTheme.gold)
+
+                    Text(verse.text)
+                        .font(OVTheme.body(15))
+                        .foregroundStyle(OVTheme.ink)
+                        .lineSpacing(4)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(OVTheme.cardPadding)
+        .ovSurfaceCard(cornerRadius: 22, fill: OVTheme.elevatedCard)
+    }
+
+    private func originalVerseCard(_ verse: OriginalLanguageStudyVerse) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("\(verse.reference) Greek")
+                    .font(OVTheme.heading(18))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Text(verse.originalText)
+                    .font(.system(size: 21, weight: .regular, design: .serif))
+                    .foregroundStyle(OVTheme.ink)
+                    .lineSpacing(6)
+                    .textSelection(.enabled)
+            }
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 10)], alignment: .leading, spacing: 10) {
+                ForEach(verse.tokens) { token in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedToken = token
+                        }
+                    } label: {
+                        tokenChip(token)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(OVTheme.cardPadding)
+        .ovSurfaceCard(cornerRadius: 22, fill: OVTheme.elevatedCard)
+    }
+
+    private func tokenChip(_ token: OriginalLanguageWordToken) -> some View {
+        VStack(spacing: 4) {
+            Text(token.surface)
+                .font(.system(size: 18, weight: .semibold, design: .serif))
+                .foregroundStyle(OVTheme.midnight)
+                .lineLimit(1)
+                .minimumScaleFactor(0.76)
+
+            Text(token.transliteration.isEmpty ? "tap" : token.transliteration)
+                .font(OVTheme.body(10))
+                .foregroundStyle(OVTheme.muted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, minHeight: 58)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
+        .background(selectedToken?.id == token.id ? OVTheme.lemon.opacity(0.62) : OVTheme.smoke.opacity(0.9))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(selectedToken?.id == token.id ? OVTheme.gold.opacity(0.75) : OVTheme.line, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func tokenDetailCard(_ token: OriginalLanguageWordToken) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(token.surface)
+                    .font(.system(size: 34, weight: .bold, design: .serif))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Text(token.transliteration.isEmpty ? "Greek word" : token.transliteration)
+                    .font(OVTheme.heading(16))
+                    .foregroundStyle(OVTheme.gold)
+            }
+
+            originalLanguageDetailRow("Meaning in this place", token.glossSummary)
+
+            originalLanguageDetailRow(
+                "Pronunciation",
+                token.transliteration.isEmpty ? "Pronunciation guide is being expanded for this word." : token.transliteration
+            )
+
+            originalLanguageDetailRow(
+                "English used here",
+                token.alignedEnglish.isEmpty ? "English alignment is being expanded for this word." : token.alignedEnglish
+            )
+
+            if !token.lemma.isEmpty {
+                originalLanguageDetailRow("Dictionary form", token.lemma)
+            }
+
+            if !token.strongs.isEmpty {
+                originalLanguageDetailRow("Strong’s", token.strongs)
+            }
+
+            if !token.morphology.isEmpty {
+                originalLanguageDetailRow("Grammar", token.morphology)
+            }
+
+            Text(token.studyNote)
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.78))
+                .lineSpacing(4)
+                .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 24, fill: OVTheme.lemon.opacity(0.22), shadowOpacity: 0.05)
+    }
+
+    private func originalLanguageDetailRow(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.uppercased())
+                .font(OVTheme.body(10))
+                .foregroundStyle(OVTheme.muted)
+
+            Text(value)
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink)
         }
     }
 }
@@ -2339,7 +2724,7 @@ private struct LifeSituationGuideLibraryView: View {
     }
 }
 
-private struct LifeSituationGuideDetailView: View {
+struct LifeSituationGuideDetailView: View {
     @ObservedObject var store: SoulJourneyStore
     let guide: LifeSituationGuide
 
@@ -2559,7 +2944,7 @@ private struct LifeSituationGuideDetailView: View {
     }
 }
 
-private struct LifeSituationGuide: Identifiable {
+struct LifeSituationGuide: Identifiable {
     let id: String
     let title: String
     let shortTitle: String
@@ -2905,11 +3290,119 @@ private struct LifeSituationGuide: Identifiable {
                     reflectionPrompt: "What part of my life most needs training instead of drifting?"
                 )
             ]
+        ),
+        LifeSituationGuide(
+            id: "happy",
+            title: "When you feel happy",
+            shortTitle: "Happy",
+            subtitle: "Turn joy into praise, gratitude, and love that points back to God.",
+            detail: "Happiness is a gift worth bringing back to God. These chapters help joy become worship instead of distraction, so gladness leads to praise, thanksgiving, generosity, and deeper love for Christ.",
+            prayer: "Father, thank You for joy. Help me receive this good moment with gratitude and turn it back into praise. Let my happiness make me more worshipful, generous, and aware of Your goodness. In Jesus' name, amen.",
+            actionStep: "Name one reason you are joyful, thank God for it directly, and share one encouragement with someone today.",
+            symbol: "sun.max",
+            accentHex: "ECDDAB",
+            reflectionQuestions: [
+                "What good gift from God am I enjoying right now?",
+                "How can this joy become worship instead of self-focus?",
+                "Who can I bless out of the overflow of this moment?"
+            ],
+            chapterPlans: [
+                LifeSituationChapterPlan(
+                    reference: "Psalms 100",
+                    title: "Enter His presence with thanksgiving",
+                    summary: "Psalm 100 turns gladness into worship by calling God's people to joyful praise, thanksgiving, and remembering His steadfast love.",
+                    reflectionPrompt: "What would it look like to enter this happy moment with thanksgiving instead of just enjoying it silently?"
+                ),
+                LifeSituationChapterPlan(
+                    reference: "James 1",
+                    title: "See the gift and the Giver",
+                    summary: "James reminds believers that every good and perfect gift comes from above, keeping gratitude rooted in God's character.",
+                    reflectionPrompt: "What good gift can I name specifically without taking it for granted?"
+                ),
+                LifeSituationChapterPlan(
+                    reference: "Philippians 4",
+                    title: "Rejoice in the Lord",
+                    summary: "Paul calls believers to rejoice in the Lord, practice gratitude, and let God's peace shape the heart.",
+                    reflectionPrompt: "How can rejoicing in the Lord shape the way I carry this joy today?"
+                )
+            ]
+        ),
+        LifeSituationGuide(
+            id: "hopeful",
+            title: "When you feel hopeful",
+            shortTitle: "Hopeful",
+            subtitle: "Let hope become patient trust, prayer, and steady obedience.",
+            detail: "Hope is strongest when it is anchored in God instead of circumstances. These chapters help you hold hope with humility, pray with expectation, and keep walking faithfully.",
+            prayer: "God of hope, fill me with joy and peace as I trust You. Keep my hope rooted in Christ, not in control, and teach me to walk faithfully with what You have placed before me. In Jesus' name, amen.",
+            actionStep: "Write what you are hoping for, surrender the timeline to God, and take one faithful step today.",
+            symbol: "sparkles",
+            accentHex: "D9EBDD",
+            reflectionQuestions: [
+                "What is my hope attached to right now?",
+                "Where do I need patience while I wait?",
+                "What faithful step can hope produce in me today?"
+            ],
+            chapterPlans: [
+                LifeSituationChapterPlan(
+                    reference: "Romans 15",
+                    title: "Abound in hope",
+                    summary: "Romans 15 names God as the source of hope and connects hope to trusting Him by the power of the Holy Spirit.",
+                    reflectionPrompt: "Am I asking God to fill me with hope, or am I trying to manufacture it alone?"
+                ),
+                LifeSituationChapterPlan(
+                    reference: "Lamentations 3",
+                    title: "Hope in mercy that is new",
+                    summary: "In the middle of grief, Lamentations remembers God's steadfast love, mercy, and faithfulness.",
+                    reflectionPrompt: "What mercy from God can I remember while I wait?"
+                ),
+                LifeSituationChapterPlan(
+                    reference: "Psalms 27",
+                    title: "Wait for the Lord",
+                    summary: "Psalm 27 ties courage to waiting on the Lord with a strengthened heart.",
+                    reflectionPrompt: "Where does hope need to become courage and patience?"
+                )
+            ]
+        ),
+        LifeSituationGuide(
+            id: "peaceful",
+            title: "When you feel peaceful",
+            shortTitle: "Peaceful",
+            subtitle: "Receive peace as a gift from Christ and let it shape the rest of your day.",
+            detail: "Peace should not make you forget God; it can become a quiet place to abide with Him. These chapters help you guard peace through gratitude, Scripture, and closeness with Christ.",
+            prayer: "Jesus, thank You for peace. Help me receive it from You, guard it with truth, and carry it into how I speak, choose, and love today. In Your name, amen.",
+            actionStep: "Stay with God for five quiet minutes and ask how this peace should shape your next conversation or decision.",
+            symbol: "leaf",
+            accentHex: "DDEAF2",
+            reflectionQuestions: [
+                "Where do I sense God's peace right now?",
+                "What usually steals this peace from me?",
+                "How can I carry peace into the next part of my day?"
+            ],
+            chapterPlans: [
+                LifeSituationChapterPlan(
+                    reference: "John 14",
+                    title: "Receive Christ's peace",
+                    summary: "Jesus gives peace that is different from the world's peace and tells troubled hearts not to be afraid.",
+                    reflectionPrompt: "What makes Christ's peace different from temporary calm?"
+                ),
+                LifeSituationChapterPlan(
+                    reference: "Colossians 3",
+                    title: "Let peace rule",
+                    summary: "Paul calls believers to let the peace of Christ rule in their hearts and to live with thankfulness.",
+                    reflectionPrompt: "Where does Christ's peace need to rule my response today?"
+                ),
+                LifeSituationChapterPlan(
+                    reference: "Psalms 23",
+                    title: "Rest under the Shepherd's care",
+                    summary: "Psalm 23 pictures the Lord as Shepherd who restores the soul and leads His people without fear.",
+                    reflectionPrompt: "What would it look like to follow the Shepherd from peace, not pressure?"
+                )
+            ]
         )
     ]
 }
 
-private struct LifeSituationChapterPlan: Identifiable {
+struct LifeSituationChapterPlan: Identifiable {
     let reference: String
     let title: String
     let summary: String
@@ -3228,7 +3721,7 @@ private struct WhereShouldIReadTodayView: View {
             } label: {
                 actionRow(
                     title: "Read \(plan.primary.reference)",
-                    subtitle: "Open the chapter in the full KJV reader."
+                    subtitle: "Open the chapter in the full \(store.selectedBibleVersion.shortName) reader."
                 )
             }
             .buttonStyle(.plain)
@@ -3783,6 +4276,70 @@ private struct FeelingShortcut: Identifiable {
             accentHex: "D9EBDD",
             verseReferences: ["Proverbs 6:6", "Psalm 1:2", "1 Corinthians 9:27"],
             intro: "When motivation is weak, structure matters more than waiting for a better mood. Let Scripture move you back into steady action."
+        ),
+        FeelingShortcut(
+            id: "angry",
+            label: "angry",
+            guideID: "angry",
+            accentHex: "F5D2C6",
+            verseReferences: ["James 1:19", "Proverbs 15:1", "Ephesians 4:26"],
+            intro: "Anger needs truth before it gets words. Slow down, pray first, and let Scripture shape the response."
+        ),
+        FeelingShortcut(
+            id: "ashamed",
+            label: "ashamed",
+            guideID: "falling-into-sin",
+            accentHex: "E7E1F0",
+            verseReferences: ["1 John 1:9", "Romans 8:1", "Luke 15:20"],
+            intro: "Shame wants you to hide. Bring it into the light and return to the mercy of God without delay."
+        ),
+        FeelingShortcut(
+            id: "discouraged",
+            label: "discouraged",
+            guideID: "far-from-god",
+            accentHex: "DDEAF2",
+            verseReferences: ["Galatians 6:9", "Isaiah 40:31", "Psalm 42:11"],
+            intro: "Discouragement can make quitting feel reasonable. Start with truth that reminds your heart to hope in God again."
+        ),
+        FeelingShortcut(
+            id: "happy",
+            label: "happy",
+            guideID: "happy",
+            accentHex: "ECDDAB",
+            verseReferences: ["Psalm 100:2", "James 1:17", "Philippians 4:4"],
+            intro: "Joy is a gift to bring back to God. Let happiness become praise, gratitude, and love that overflows."
+        ),
+        FeelingShortcut(
+            id: "grateful",
+            label: "grateful",
+            guideID: "happy",
+            accentHex: "D9EBDD",
+            verseReferences: ["Psalm 100:4", "1 Thessalonians 5:18", "Colossians 3:17"],
+            intro: "Gratitude gets stronger when it becomes worship. Name the gift, thank the Giver, and carry it into action."
+        ),
+        FeelingShortcut(
+            id: "peaceful",
+            label: "peaceful",
+            guideID: "peaceful",
+            accentHex: "DDEAF2",
+            verseReferences: ["John 14:27", "Colossians 3:15", "Psalm 23:2"],
+            intro: "Peace is not only relief. It is a place to stay close to Christ and let His presence shape what comes next."
+        ),
+        FeelingShortcut(
+            id: "hopeful",
+            label: "hopeful",
+            guideID: "hopeful",
+            accentHex: "D9EBDD",
+            verseReferences: ["Romans 15:13", "Lamentations 3:24", "Psalm 27:14"],
+            intro: "Hope is meant to become trust. Bring expectation to God and let it produce patience and faithful action."
+        ),
+        FeelingShortcut(
+            id: "excited",
+            label: "excited",
+            guideID: "happy",
+            accentHex: "ECDDAB",
+            verseReferences: ["Psalm 103:1", "James 1:17", "Romans 12:11"],
+            intro: "Excitement can become worship instead of hurry. Thank God, ask for wisdom, and move with joy."
         )
     ]
 }
@@ -4075,6 +4632,10 @@ private struct BibleVerseNotesSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    Text("Notes keep their original Bible version. If you switch versions, they remain visible with a label.")
+                        .font(OVTheme.body(12))
+                        .foregroundStyle(OVTheme.muted)
+
                     if store.sortedBibleVerseNotes.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("No Bible notes yet")
@@ -4154,6 +4715,14 @@ private struct BibleVerseNotesSheet: View {
                         .font(OVTheme.heading(15))
                         .foregroundStyle(OVTheme.midnight)
                         .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text(note.version.shortName)
+                        .font(OVTheme.body(11))
+                        .foregroundStyle(OVTheme.midnight)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(OVTheme.smoke)
+                        .clipShape(Capsule())
 
                     Text(shortDate(note.updatedAt))
                         .font(OVTheme.body(11))
@@ -4350,7 +4919,7 @@ private struct DailyVerseShareGraphic: View {
 
                     Spacer()
 
-                    Text("KJV")
+                    Text(dailyVerse.version.shortName)
                         .font(OVTheme.heading(14))
                         .foregroundStyle(OVTheme.midnight.opacity(0.82))
                 }
@@ -4420,7 +4989,8 @@ struct BibleAppView_Previews: PreviewProvider {
     static var previews: some View {
         ScriptureHomeView(
             store: SoulJourneyStore(),
-            openGlorifyGifts: {}
+            openGlorifyGifts: {},
+            openProfile: {}
         )
     }
 }

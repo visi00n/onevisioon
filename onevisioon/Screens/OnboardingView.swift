@@ -102,6 +102,7 @@ private extension OnboardingView {
     enum OnboardingStage: Int, CaseIterable, Identifiable {
         case welcome
         case quizIntro
+        case greekCorrelation
         case gender
         case lifeState
         case latelyIssues
@@ -184,6 +185,8 @@ private extension OnboardingView {
                 welcomeView
             case .quizIntro:
                 quizIntroView
+            case .greekCorrelation:
+                greekCorrelationIntroView
             case .gender:
                 singleChoiceQuestionView(
                     title: "What's your gender?",
@@ -343,10 +346,7 @@ private extension OnboardingView {
             .spiritualStruggle,
             .readiness,
             .notifications,
-            .books,
-            .principles,
             .referral,
-            .reviews,
             .personalBasics,
             .discovery,
             .analysisLoading,
@@ -361,7 +361,7 @@ private extension OnboardingView {
     }
 
     var hiddenProgressStages: Set<OnboardingStage> {
-        [.welcome, .quizIntro, .quizComplete, .greatWork]
+        [.welcome, .quizIntro, .greekCorrelation]
     }
 
     var showsProgressBar: Bool {
@@ -373,23 +373,8 @@ private extension OnboardingView {
         return Double(index + 1) / Double(progressStages.count)
     }
 
-    var progressStepNumber: Int {
-        guard let index = progressStages.firstIndex(of: step) else { return 0 }
-        return index + 1
-    }
-
     var quizProgressBar: some View {
         VStack(spacing: 10) {
-            HStack {
-                Spacer()
-
-                Text("\(progressStepNumber) of \(progressStages.count)")
-                    .font(OnboardingTypography.caption)
-                    .foregroundStyle(Color.white.opacity(0.72))
-            }
-            .padding(.horizontal, 22)
-            .padding(.top, 8)
-
             Capsule()
                 .fill(Color.white.opacity(0.1))
                 .frame(height: 6)
@@ -405,7 +390,7 @@ private extension OnboardingView {
                         }
                 }
                 .padding(.horizontal, 22)
-                .padding(.top, 2)
+                .padding(.top, 10)
 
             Spacer()
                 .frame(height: 10)
@@ -460,6 +445,17 @@ private extension OnboardingView {
             subtitle: "Answer each question honestly.",
             detail: "We use your answers to build a path that fits where you are and how we can guide you in God's Word.",
             buttonTitle: "Take the Quiz",
+            assetName: "bg2",
+            action: { go(to: .greekCorrelation) }
+        )
+    }
+
+    var greekCorrelationIntroView: some View {
+        ScenicIntroLayout(
+            title: "Greek correlation Bible",
+            subtitle: "Study the Word beneath the translation.",
+            detail: "Tap Greek words inside verses to see meaning, transliteration, and deeper word study. Then follow where the same word appears again across Scripture so patterns, themes, and connections become easier to see.",
+            buttonTitle: "Next >",
             assetName: "bg2",
             action: { go(to: .gender) }
         )
@@ -580,13 +576,13 @@ private extension OnboardingView {
                     let granted = await requestNotifications()
                     wantsNotifications = granted
                     reminderWindow = granted ? "enabled" : "disabled"
-                    go(to: .books)
+                    go(to: .referral)
                 }
             },
             secondaryAction: {
                 wantsNotifications = false
                 reminderWindow = "disabled"
-                go(to: .books)
+                go(to: .referral)
             }
         ) {
             VStack(alignment: .leading, spacing: 12) {
@@ -1014,8 +1010,6 @@ private extension OnboardingView {
             action: advance
         ) {
             VStack(spacing: 14) {
-                RatingSignalCard()
-
                 MissionFlowCard(
                     steps: [
                         MissionFlowStep(
@@ -1064,11 +1058,6 @@ private extension OnboardingView {
 
                 CommunityPreviewCard(
                     recommendedGroupTitle: recommendedChatGroupTitle
-                )
-
-                QuotePanel(
-                    quote: "He is no fool who gives what he cannot keep to gain what he cannot lose.",
-                    attribution: "Jim Elliot"
                 )
             }
         }
@@ -1163,6 +1152,18 @@ private extension OnboardingView {
                             .font(OnboardingTypography.caption)
                             .foregroundStyle(Color.white.opacity(0.62))
                             .multilineTextAlignment(.center)
+
+                        if shouldShowStudyFallback {
+                            Button {
+                                continueWithBibleStudy()
+                            } label: {
+                                Text("Continue with Bible Study for now")
+                                    .font(OnboardingTypography.body(14, weight: .bold))
+                                    .foregroundStyle(Color.white.opacity(0.86))
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.top, 2)
+                        }
                     }
                 }
                 .animation(.spring(response: 0.34, dampingFraction: 0.86), value: hasSelectedPremiumPlan)
@@ -1393,6 +1394,14 @@ private extension OnboardingView {
                 paywallMessage = accessManager.errorMessage ?? "We couldn't find an active membership to restore."
             }
         }
+    }
+
+    func continueWithBibleStudy() {
+        var profile = buildProfile()
+        profile.selectedVersion = "study"
+        profile.selectedPremiumPlan = ""
+        store.completeOnboarding(profile: profile)
+        paywallMessage = ""
     }
 
     func finishOnboarding() {
@@ -1633,25 +1642,26 @@ private extension OnboardingView {
     func nextStep(after stage: OnboardingStage) -> OnboardingStage {
         switch stage {
         case .welcome: return .quizIntro
-        case .quizIntro: return .gender
+        case .quizIntro: return .greekCorrelation
+        case .greekCorrelation: return .gender
         case .gender: return .lifeState
         case .lifeState: return .latelyIssues
-        case .latelyIssues: return .quizComplete
+        case .latelyIssues: return .lifeVision
         case .quizComplete: return .lifeVision
         case .lifeVision: return .desiredGrowth
         case .desiredGrowth: return .behindArea
         case .behindArea: return .oneYearFeeling
         case .oneYearFeeling: return .futureStrength
-        case .futureStrength: return .greatWork
+        case .futureStrength: return .cadence
         case .greatWork: return .cadence
         case .cadence: return .supportNeed
         case .supportNeed: return .spiritualStruggle
         case .spiritualStruggle: return .readiness
         case .readiness: return .notifications
-        case .notifications: return .books
+        case .notifications: return .referral
         case .books: return .principles
         case .principles: return .referral
-        case .referral: return .reviews
+        case .referral: return .personalBasics
         case .reviews: return .personalBasics
         case .personalBasics: return .discovery
         case .discovery: return .analysisLoading
@@ -1703,6 +1713,8 @@ private extension OnboardingView {
         case .welcome:
             return "bg1"
         case .quizIntro:
+            return "bg2"
+        case .greekCorrelation:
             return "bg2"
         case .quizComplete:
             return "bg3"
@@ -1783,6 +1795,12 @@ private extension OnboardingView {
 
     var hasSelectedPremiumPlan: Bool {
         !selectedPremiumPlan.isEmpty
+    }
+
+    var shouldShowStudyFallback: Bool {
+        let combined = "\(paywallMessage) \(accessManager.errorMessage ?? "")".lowercased()
+        return combined.contains("plans are unavailable")
+            || combined.contains("unavailable right now")
     }
 
     var recommendedChatGroupTitle: String {
@@ -2145,6 +2163,7 @@ private struct QuestionLayout<Content: View>: View {
                 .padding(.top, 20)
                 .padding(.bottom, 24)
             }
+            .scrollDismissesKeyboard(.interactively)
 
             VStack(spacing: 10) {
                 if let secondaryButtonTitle, let secondaryAction {
@@ -2604,12 +2623,12 @@ private struct CommunityPreviewCard: View {
             HStack(spacing: 12) {
                 communityBox(
                     title: "General Chat",
-                    detail: "Talk, ask questions, and grow with others."
+                    detail: "Coming after launch as the community grows."
                 )
 
                 communityBox(
                     title: recommendedGroupTitle,
-                    detail: "Course coming soon"
+                    detail: "Placeholder while we collect feedback."
                 )
             }
         }
@@ -2783,28 +2802,28 @@ private struct OnboardingInputField: View {
                 text: $text,
                 prompt: Text(title)
                     .foregroundStyle(
-                        isFocused
-                            ? OVTheme.midnight.opacity(0.4)
-                            : Color.white.opacity(0.38)
+                        Color.white.opacity(isFocused ? 0.52 : 0.38)
                     )
             )
                 .keyboardType(keyboardType)
                 .textInputAutocapitalization(autocapitalization)
                 .autocorrectionDisabled(true)
+                .submitLabel(.next)
                 .font(OnboardingTypography.body(18, weight: .semibold))
-                .foregroundStyle(isFocused ? OVTheme.midnight : .white)
+                .foregroundStyle(.white)
                 .focused($isFocused)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 15)
-                .background(isFocused ? Color.white : OnboardingColors.card)
+                .background(isFocused ? OnboardingColors.selectedCard : OnboardingColors.card)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(
-                            isFocused ? Color.white : OnboardingColors.border,
+                            isFocused ? OnboardingColors.goldBorder : OnboardingColors.border,
                             lineWidth: isFocused ? 1.4 : 1
                         )
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .animation(.easeInOut(duration: 0.16), value: isFocused)
         }
     }
 }

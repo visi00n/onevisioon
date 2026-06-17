@@ -219,6 +219,13 @@ final class SubscriptionAccessManager: ObservableObject {
             await loadProducts()
         }
 
+        // TestFlight/Sandbox can occasionally return no products on first load.
+        // One sync + reload pass helps recover without requiring app restart.
+        if products.isEmpty {
+            try? await AppStore.sync()
+            await loadProducts()
+        }
+
         let product: Product?
         switch plan {
         case "yearly":
@@ -228,7 +235,11 @@ final class SubscriptionAccessManager: ObservableObject {
         }
 
         guard let product else {
-            errorMessage = "Bible School plans are unavailable right now. Double-check the product IDs in App Store Connect."
+            if products.isEmpty {
+                errorMessage = "Bible School plans are unavailable right now. Confirm the subscription products are available in App Store Connect and try again in a minute."
+            } else {
+                errorMessage = "Bible School plans are unavailable right now. Double-check the product IDs in App Store Connect."
+            }
             return false
         }
 

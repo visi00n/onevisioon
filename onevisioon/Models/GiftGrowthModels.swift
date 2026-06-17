@@ -606,7 +606,8 @@ enum GiftDiscoveryCatalog {
                 option("q1-c", title: "I bring Scripture or clarity", detail: "I want them grounded, not only comforted.", gift: .teaching, secondary: .encouragement, needs: [.clarity: 2]),
                 option("q1-d", title: "I sit with them and listen", detail: "I want them to feel seen and safe.", gift: .mercy, secondary: .encouragement, needs: [.compassion: 2, .boundaries: 1]),
                 option("q1-e", title: "I think about a plan", detail: "I start figuring out what would move help forward.", gift: .leadership, secondary: .service, needs: [.humility: 1, .followThrough: 2]),
-                option("q1-f", title: "I make something meaningful", detail: "I want to encourage them through something creative.", gift: .creativity, secondary: .encouragement, needs: [.discipline: 2])
+                option("q1-f", title: "I make something meaningful", detail: "I want to encourage them through something creative.", gift: .creativity, secondary: .encouragement, needs: [.discipline: 2]),
+                option("q1-g", title: "I pray first, then respond", detail: "I pause, ask God for wisdom, then choose how to help.", gift: .mercy, secondary: .teaching, needs: [.clarity: 1, .compassion: 1])
             ]
         ),
         GiftDiscoveryQuestion(
@@ -619,7 +620,8 @@ enum GiftDiscoveryCatalog {
                 option("q2-c", title: "Explaining truth clearly", detail: "I like helping people understand.", gift: .teaching, needs: [.clarity: 2]),
                 option("q2-d", title: "Caring for hurting people", detail: "I like making people feel held with grace.", gift: .mercy, needs: [.compassion: 2, .boundaries: 1]),
                 option("q2-e", title: "Organizing people toward a goal", detail: "I like bringing direction and movement.", gift: .leadership, needs: [.humility: 1, .followThrough: 1]),
-                option("q2-f", title: "Building something beautiful or useful", detail: "I like shaping ideas into something people can see.", gift: .creativity, needs: [.discipline: 2])
+                option("q2-f", title: "Building something beautiful or useful", detail: "I like shaping ideas into something people can see.", gift: .creativity, needs: [.discipline: 2]),
+                option("q2-g", title: "Walking deeply with one person", detail: "I like mentoring one person steadily over time.", gift: .encouragement, secondary: .teaching, needs: [.consistency: 2, .clarity: 1])
             ]
         ),
         GiftDiscoveryQuestion(
@@ -632,7 +634,8 @@ enum GiftDiscoveryCatalog {
                 option("q3-c", title: "Explanation or clarity", detail: "People come when they need to understand something.", gift: .teaching, needs: [.clarity: 2]),
                 option("q3-d", title: "Compassion", detail: "People come when they need gentleness and care.", gift: .mercy, needs: [.compassion: 2]),
                 option("q3-e", title: "Direction", detail: "People come when something needs leading or organizing.", gift: .leadership, needs: [.humility: 1, .clarity: 1]),
-                option("q3-f", title: "A creative eye", detail: "People come when something needs to be expressed or shaped well.", gift: .creativity, needs: [.discipline: 1, .clarity: 1])
+                option("q3-f", title: "A creative eye", detail: "People come when something needs to be expressed or shaped well.", gift: .creativity, needs: [.discipline: 1, .clarity: 1]),
+                option("q3-g", title: "Prayer and spiritual discernment", detail: "People come when they need prayer, peace, and direction.", gift: .mercy, secondary: .leadership, needs: [.compassion: 1, .humility: 1])
             ]
         ),
         GiftDiscoveryQuestion(
@@ -645,7 +648,8 @@ enum GiftDiscoveryCatalog {
                 option("q4-c", title: "Truth getting twisted", detail: "I notice confusion and weak understanding.", gift: .teaching, needs: [.clarity: 2]),
                 option("q4-d", title: "Pain being overlooked", detail: "I notice when hurt is being ignored.", gift: .mercy, needs: [.compassion: 2, .boundaries: 1]),
                 option("q4-e", title: "Disorder and drift", detail: "I notice when nobody is taking responsibility.", gift: .leadership, needs: [.humility: 1, .followThrough: 1]),
-                option("q4-f", title: "Truth feeling flat or forgettable", detail: "I notice when something could be carried more clearly or beautifully.", gift: .creativity, secondary: .teaching, needs: [.discipline: 1, .clarity: 1])
+                option("q4-f", title: "Truth feeling flat or forgettable", detail: "I notice when something could be carried more clearly or beautifully.", gift: .creativity, secondary: .teaching, needs: [.discipline: 1, .clarity: 1]),
+                option("q4-g", title: "People drifting from God quietly", detail: "I notice when someone looks fine but is spiritually fading.", gift: .encouragement, secondary: .mercy, needs: [.consistency: 1, .compassion: 1])
             ]
         ),
         GiftDiscoveryQuestion(
@@ -658,7 +662,8 @@ enum GiftDiscoveryCatalog {
                 option("q5-c", title: "I want to explain it clearly", detail: "I start breaking it down.", gift: .teaching, needs: [.clarity: 2]),
                 option("q5-d", title: "I feel the comfort of God", detail: "I enter it with tenderness and care.", gift: .mercy, needs: [.compassion: 2]),
                 option("q5-e", title: "I see a path forward", detail: "I start noticing direction and next steps.", gift: .leadership, needs: [.clarity: 1, .discipline: 1]),
-                option("q5-f", title: "I want to turn it into something", detail: "I imagine a design, lyric, image, or piece of work.", gift: .creativity, needs: [.discipline: 2])
+                option("q5-f", title: "I want to turn it into something", detail: "I imagine a design, lyric, image, or piece of work.", gift: .creativity, needs: [.discipline: 2]),
+                option("q5-g", title: "I pause and pray before deciding", detail: "I wait on God first, then I decide what to do with it.", gift: .mercy, secondary: .teaching, needs: [.clarity: 1, .humility: 1])
             ]
         ),
         GiftDiscoveryQuestion(
@@ -671,7 +676,8 @@ enum GiftDiscoveryCatalog {
                 option("q6-c", title: "I can make truth simple", detail: "I help people see clearly.", gift: .teaching, needs: [.clarity: 2]),
                 option("q6-d", title: "I feel what people carry", detail: "I move toward people with care.", gift: .mercy, needs: [.compassion: 2]),
                 option("q6-e", title: "I can bring order and movement", detail: "I help people stop drifting.", gift: .leadership, needs: [.humility: 1, .clarity: 1]),
-                option("q6-f", title: "I can make truth visible", detail: "I turn ideas into something memorable.", gift: .creativity, needs: [.discipline: 1, .clarity: 1])
+                option("q6-f", title: "I can make truth visible", detail: "I turn ideas into something memorable.", gift: .creativity, needs: [.discipline: 1, .clarity: 1]),
+                option("q6-g", title: "I adapt to what each person needs", detail: "I can shift roles quickly depending on what helps most.", gift: .service, secondary: .leadership, needs: [.clarity: 1, .followThrough: 1])
             ]
         ),
         GiftDiscoveryQuestion(
@@ -780,6 +786,135 @@ enum GiftDiscoveryCatalog {
         )
     ]
 
+    static let maxAdaptiveFollowUps = 4
+
+    private static let followUpQuestionsByGift: [SpiritualGiftKind: GiftDiscoveryQuestion] = [
+        .encouragement: GiftDiscoveryQuestion(
+            id: "fup-encouragement",
+            prompt: "When you encourage someone, what kind of response feels most like you?",
+            detail: "This follow-up helps us understand your encouragement style more accurately.",
+            options: [
+                option("fup-enc-a", title: "I speak direct truth with hope", detail: "I challenge and strengthen at the same time.", gift: .encouragement, secondary: .teaching, needs: [.courage: 2, .clarity: 1]),
+                option("fup-enc-b", title: "I ask questions before I speak", detail: "I want to understand their heart first.", gift: .encouragement, secondary: .mercy, needs: [.compassion: 1, .clarity: 1]),
+                option("fup-enc-c", title: "I follow up later so they do not feel forgotten", detail: "I check back in after the first conversation.", gift: .encouragement, secondary: .service, needs: [.consistency: 2]),
+                option("fup-enc-d", title: "I pray with them right there", detail: "I want God's presence to lead the moment.", gift: .encouragement, secondary: .mercy, needs: [.courage: 1, .compassion: 1]),
+                option("fup-enc-e", title: "I give one practical next step", detail: "I help them move forward, not just feel better.", gift: .leadership, secondary: .encouragement, needs: [.clarity: 1, .followThrough: 1]),
+                option("fup-enc-f", title: "I write or create something to lift them", detail: "I use words, notes, or creative work to strengthen them.", gift: .creativity, secondary: .encouragement, needs: [.discipline: 1, .consistency: 1])
+            ]
+        ),
+        .service: GiftDiscoveryQuestion(
+            id: "fup-service",
+            prompt: "When you serve, which role fits you best most of the time?",
+            detail: "Pick the service pattern that feels most natural.",
+            options: [
+                option("fup-ser-a", title: "I take practical tasks and finish them", detail: "I quietly get things done.", gift: .service, needs: [.followThrough: 2]),
+                option("fup-ser-b", title: "I care for people one-on-one", detail: "I serve by being personally present.", gift: .service, secondary: .mercy, needs: [.compassion: 1, .boundaries: 1]),
+                option("fup-ser-c", title: "I build systems so people are served better", detail: "I improve structure, not only one task.", gift: .leadership, secondary: .service, needs: [.clarity: 1, .humility: 1]),
+                option("fup-ser-d", title: "I step in quickly during pressure moments", detail: "I help most when things are urgent.", gift: .service, secondary: .leadership, needs: [.courage: 1, .followThrough: 1]),
+                option("fup-ser-e", title: "I coordinate volunteers and teams", detail: "I like mobilizing people around a need.", gift: .leadership, secondary: .service, needs: [.humility: 1, .followThrough: 1]),
+                option("fup-ser-f", title: "I make care feel thoughtful and meaningful", detail: "I bring creative touch to practical help.", gift: .creativity, secondary: .service, needs: [.discipline: 1, .followThrough: 1])
+            ]
+        ),
+        .teaching: GiftDiscoveryQuestion(
+            id: "fup-teaching",
+            prompt: "When you explain Scripture, what approach comes most naturally?",
+            detail: "This clarifies your teaching lane and depth.",
+            options: [
+                option("fup-tea-a", title: "Line-by-line explanation", detail: "I like unpacking the text carefully.", gift: .teaching, needs: [.clarity: 2]),
+                option("fup-tea-b", title: "Simple summary and application", detail: "I like turning truth into one clear action.", gift: .teaching, secondary: .leadership, needs: [.clarity: 1, .followThrough: 1]),
+                option("fup-tea-c", title: "Stories and examples that make it click", detail: "I connect truth to daily life pictures.", gift: .teaching, secondary: .creativity, needs: [.clarity: 1, .discipline: 1]),
+                option("fup-tea-d", title: "One-on-one discipleship conversations", detail: "I teach best in personal dialogue.", gift: .teaching, secondary: .mercy, needs: [.compassion: 1, .clarity: 1]),
+                option("fup-tea-e", title: "Question and answer format", detail: "I help people process doubts and confusion.", gift: .teaching, secondary: .encouragement, needs: [.clarity: 1, .courage: 1]),
+                option("fup-tea-f", title: "Truth defense and worldview clarity", detail: "I like correcting confusion and false ideas.", gift: .teaching, secondary: .leadership, needs: [.clarity: 2, .humility: 1])
+            ]
+        ),
+        .mercy: GiftDiscoveryQuestion(
+            id: "fup-mercy",
+            prompt: "When someone is hurting, how do you care for them most naturally?",
+            detail: "This helps us understand your mercy expression and growth edge.",
+            options: [
+                option("fup-mer-a", title: "I stay present and listen deeply", detail: "I give people space to be honest.", gift: .mercy, needs: [.compassion: 2, .boundaries: 1]),
+                option("fup-mer-b", title: "I give practical care and support", detail: "I help with meals, rides, errands, and real needs.", gift: .service, secondary: .mercy, needs: [.followThrough: 1, .compassion: 1]),
+                option("fup-mer-c", title: "I pray and intercede with them", detail: "I carry their pain to God quickly.", gift: .mercy, secondary: .encouragement, needs: [.courage: 1, .compassion: 1]),
+                option("fup-mer-d", title: "I gently bring truth and perspective", detail: "I care deeply but still guide toward what is true.", gift: .encouragement, secondary: .mercy, needs: [.clarity: 1, .courage: 1]),
+                option("fup-mer-e", title: "I protect healthy boundaries while caring", detail: "I stay loving without carrying everything.", gift: .mercy, secondary: .leadership, needs: [.boundaries: 2, .humility: 1]),
+                option("fup-mer-f", title: "I advocate for overlooked people", detail: "I step up when someone is being ignored.", gift: .leadership, secondary: .mercy, needs: [.courage: 1, .compassion: 1])
+            ]
+        ),
+        .leadership: GiftDiscoveryQuestion(
+            id: "fup-leadership",
+            prompt: "When you lead, what pattern sounds most like you?",
+            detail: "Choose the leadership style you use most often.",
+            options: [
+                option("fup-lead-a", title: "I clarify the mission and next steps", detail: "I help people know where we are going.", gift: .leadership, needs: [.clarity: 2]),
+                option("fup-lead-b", title: "I organize people and timelines", detail: "I build order and accountability.", gift: .leadership, secondary: .service, needs: [.followThrough: 2, .humility: 1]),
+                option("fup-lead-c", title: "I coach people one-on-one", detail: "I grow leaders personally.", gift: .leadership, secondary: .encouragement, needs: [.consistency: 1, .humility: 1]),
+                option("fup-lead-d", title: "I stay calm and decide during pressure", detail: "I carry responsibility in crisis moments.", gift: .leadership, secondary: .service, needs: [.courage: 2, .clarity: 1]),
+                option("fup-lead-e", title: "I keep the group spiritually grounded", detail: "I lead by prayer and discernment first.", gift: .leadership, secondary: .mercy, needs: [.humility: 1, .clarity: 1]),
+                option("fup-lead-f", title: "I communicate vision in a memorable way", detail: "I use storytelling and creativity to move people.", gift: .creativity, secondary: .leadership, needs: [.discipline: 1, .clarity: 1])
+            ]
+        ),
+        .creativity: GiftDiscoveryQuestion(
+            id: "fup-creativity",
+            prompt: "How does your creativity usually show up when serving God and people?",
+            detail: "Pick what is most true right now, not your ideal version.",
+            options: [
+                option("fup-cre-a", title: "Writing words that strengthen or teach", detail: "I process truth through writing and messaging.", gift: .creativity, secondary: .encouragement, needs: [.discipline: 1, .clarity: 1]),
+                option("fup-cre-b", title: "Visual design that makes truth clearer", detail: "I think in images, layout, and visual flow.", gift: .creativity, secondary: .teaching, needs: [.discipline: 2]),
+                option("fup-cre-c", title: "Music, spoken word, or voice", detail: "I use sound and rhythm to help people receive truth.", gift: .creativity, secondary: .encouragement, needs: [.courage: 1, .discipline: 1]),
+                option("fup-cre-d", title: "Film, editing, or storytelling media", detail: "I bring narrative and emotion into focus.", gift: .creativity, secondary: .leadership, needs: [.discipline: 2]),
+                option("fup-cre-e", title: "Problem-solving and building new systems", detail: "I create tools or workflows that help people.", gift: .leadership, secondary: .creativity, needs: [.clarity: 1, .followThrough: 1]),
+                option("fup-cre-f", title: "I have ideas but struggle to finish", detail: "My biggest gap is consistency and execution.", gift: .creativity, secondary: .service, needs: [.discipline: 2, .followThrough: 2])
+            ]
+        )
+    ]
+
+    private static var questionLookup: [String: GiftDiscoveryQuestion] {
+        var lookup = questions.reduce(into: [String: GiftDiscoveryQuestion]()) { partial, question in
+            partial[question.id] = question
+        }
+        for question in followUpQuestionsByGift.values {
+            lookup[question.id] = question
+        }
+        return lookup
+    }
+
+    private static var baseQuestionLookup: [String: GiftDiscoveryQuestion] {
+        questions.reduce(into: [String: GiftDiscoveryQuestion]()) { partial, question in
+            partial[question.id] = question
+        }
+    }
+
+    static func isBaseQuestionID(_ questionID: String) -> Bool {
+        baseQuestionLookup[questionID] != nil
+    }
+
+    static func adaptiveFollowUp(
+        forBaseQuestionID questionID: String,
+        selectedOptionID: String,
+        existingFollowUpIDs: Set<String>
+    ) -> GiftDiscoveryQuestion? {
+        guard existingFollowUpIDs.count < maxAdaptiveFollowUps,
+              let question = baseQuestionLookup[questionID],
+              let selectedOption = question.options.first(where: { $0.id == selectedOptionID }),
+              let gift = dominantGift(for: selectedOption),
+              let followUp = followUpQuestionsByGift[gift],
+              !existingFollowUpIDs.contains(followUp.id) else {
+            return nil
+        }
+
+        return followUp
+    }
+
+    private static func dominantGift(for option: GiftDiscoveryOption) -> SpiritualGiftKind? {
+        option.scores.max { left, right in
+            if left.value != right.value {
+                return left.value < right.value
+            }
+            return left.key.rawValue > right.key.rawValue
+        }?.key
+    }
+
     static func buildProfile(from answers: [String: String], completedAt: Date = .now) -> GiftDiscoveryProfile {
         var scoreMap = SpiritualGiftKind.allCases.reduce(into: [String: Int]()) { partial, gift in
             partial[gift.rawValue] = 0
@@ -788,8 +923,8 @@ enum GiftDiscoveryCatalog {
             partial[need.rawValue] = 0
         }
 
-        for question in questions {
-            guard let answerID = answers[question.id],
+        for (questionID, answerID) in answers {
+            guard let question = questionLookup[questionID],
                   let option = question.options.first(where: { $0.id == answerID }) else {
                 continue
             }

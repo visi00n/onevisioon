@@ -1,11 +1,70 @@
 import SwiftUI
+import UIKit
 
-private enum MainTab: Hashable {
+private enum MainTab: String, CaseIterable, Identifiable, Hashable {
     case home
     case glorify
     case bible
     case lessons
     case chat
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .home:
+            return "Home"
+        case .glorify:
+            return "Glorify"
+        case .bible:
+            return "Bible"
+        case .lessons:
+            return "Lessons"
+        case .chat:
+            return "Chat"
+        }
+    }
+
+    var tutorialSlides: [HubTutorialSlide] {
+        [
+            HubTutorialSlide(imageName: "\(rawValue)1tut", fallbackTitle: "\(title) tutorial"),
+            HubTutorialSlide(imageName: "\(rawValue)2tut", fallbackTitle: "\(title) tools"),
+            HubTutorialSlide(imageName: "\(rawValue)3tut", fallbackTitle: "\(title) next step")
+        ]
+    }
+}
+
+private struct HubTutorialSlide: Identifiable, Hashable {
+    let imageName: String
+    let fallbackTitle: String
+
+    var id: String { imageName }
+}
+
+private enum HubTutorialDefaults {
+    private static let maxDeclines = 3
+
+    static func shouldPrompt(for tab: MainTab) -> Bool {
+        !UserDefaults.standard.bool(forKey: completedKey(for: tab))
+            && UserDefaults.standard.integer(forKey: declinedKey(for: tab)) < maxDeclines
+    }
+
+    static func markCompleted(_ tab: MainTab) {
+        UserDefaults.standard.set(true, forKey: completedKey(for: tab))
+    }
+
+    static func recordDecline(_ tab: MainTab) {
+        let key = declinedKey(for: tab)
+        UserDefaults.standard.set(UserDefaults.standard.integer(forKey: key) + 1, forKey: key)
+    }
+
+    private static func completedKey(for tab: MainTab) -> String {
+        "ov_tutorial_completed_\(tab.rawValue)"
+    }
+
+    private static func declinedKey(for tab: MainTab) -> String {
+        "ov_tutorial_declined_count_\(tab.rawValue)"
+    }
 }
 
 private enum AppDeepLinkDestination: Hashable {
@@ -133,6 +192,8 @@ private struct MainTabView: View {
     @State private var glorifyRoute: GlorifyRoute?
     @State private var bibleDeepLinkTarget: BibleReferenceTarget?
     @State private var showAccountSetupProfile = false
+    @State private var tutorialPromptTab: MainTab?
+    @State private var activeTutorialTab: MainTab?
 
     private var showsAccountSetupLock: Bool {
         store.requiresPostPurchaseAccountLink && !authManager.isSignedIn
@@ -146,6 +207,9 @@ private struct MainTabView: View {
                     openGlorifyGifts: {
                         selectedTab = .glorify
                         glorifyRoute = .discoverGifts
+                    },
+                    openProfile: {
+                        showAccountSetupProfile = true
                     }
                 )
                     .tabItem {
@@ -153,7 +217,7 @@ private struct MainTabView: View {
                     }
                     .tag(MainTab.home)
 
-                GlorifyView(store: store, accessManager: accessManager, jumpTarget: $glorifyRoute)
+                GlorifyView(store: store, jumpTarget: $glorifyRoute)
                     .tabItem {
                         Label("Glorify", systemImage: "sparkles")
                     }
@@ -186,6 +250,22 @@ private struct MainTabView: View {
                 }
                 .transition(.opacity.combined(with: .scale(scale: 1.02)))
             }
+
+            if let tutorialPromptTab, !showsAccountSetupLock {
+                HubTutorialPromptBanner(
+                    tab: tutorialPromptTab,
+                    onStart: {
+                        startTutorial(for: tutorialPromptTab)
+                    },
+                    onDecline: {
+                        declineTutorial(for: tutorialPromptTab)
+                    }
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
         .background(OVTheme.mainBackground.ignoresSafeArea())
         .tint(OVTheme.midnight)
@@ -199,11 +279,21 @@ private struct MainTabView: View {
             .environmentObject(authManager)
             .environmentObject(store)
         }
+        .fullScreenCover(item: $activeTutorialTab) { tab in
+            HubTutorialSlideshowView(tab: tab) {
+                completeTutorial(for: tab)
+            }
+        }
         .onAppear {
             consumePendingDeepLinkIfNeeded()
+            presentTutorialPromptIfNeeded(for: selectedTab, delay: 0.55)
         }
         .onChange(of: pendingDeepLink) { _, _ in
             consumePendingDeepLinkIfNeeded()
+        }
+        .onChange(of: selectedTab) { _, newTab in
+            tutorialPromptTab = nil
+            presentTutorialPromptIfNeeded(for: newTab, delay: 0.35)
         }
     }
 
@@ -217,6 +307,168 @@ private struct MainTabView: View {
         }
 
         self.pendingDeepLink = nil
+    }
+
+    private func presentTutorialPromptIfNeeded(for tab: MainTab, delay: TimeInterval = 0) {
+        guard activeTutorialTab == nil,
+              !showsAccountSetupLock,
+              HubTutorialDefaults.shouldPrompt(for: tab) else { return }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard selectedTab == tab,
+                  activeTutorialTab == nil,
+                  !showsAccountSetupLock,
+                  HubTutorialDefaults.shouldPrompt(for: tab) else { return }
+
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                tutorialPromptTab = tab
+            }
+        }
+    }
+
+    private func startTutorial(for tab: MainTab) {
+        withAnimation(.easeOut(duration: 0.2)) {
+            tutorialPromptTab = nil
+        }
+        activeTutorialTab = tab
+    }
+
+    private func declineTutorial(for tab: MainTab) {
+        HubTutorialDefaults.recordDecline(tab)
+        withAnimation(.easeOut(duration: 0.2)) {
+            tutorialPromptTab = nil
+        }
+    }
+
+    private func completeTutorial(for tab: MainTab) {
+        HubTutorialDefaults.markCompleted(tab)
+        activeTutorialTab = nil
+    }
+}
+
+private struct HubTutorialPromptBanner: View {
+    let tab: MainTab
+    let onStart: () -> Void
+    let onDecline: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "questionmark.circle.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(OVTheme.midnight)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Take the \(tab.title) tutorial?")
+                    .font(OVTheme.heading(16))
+                    .foregroundStyle(OVTheme.ink)
+
+                Text("A quick visual walkthrough for this hub.")
+                    .font(OVTheme.body(13))
+                    .foregroundStyle(OVTheme.muted)
+            }
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 8) {
+                Button("No", action: onDecline)
+                    .font(OVTheme.heading(13))
+                    .foregroundStyle(OVTheme.muted)
+
+                Button("Yes", action: onStart)
+                    .font(OVTheme.heading(13))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(OVTheme.midnight)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(14)
+        .background(OVTheme.elevatedCard)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(OVTheme.line, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: Color.black.opacity(0.08), radius: 18, x: 0, y: 10)
+    }
+}
+
+private struct HubTutorialSlideshowView: View {
+    let tab: MainTab
+    let onComplete: () -> Void
+
+    @State private var index = 0
+
+    private var slides: [HubTutorialSlide] {
+        tab.tutorialSlides
+    }
+
+    private var currentSlide: HubTutorialSlide {
+        slides[min(index, max(0, slides.count - 1))]
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            if let image = UIImage(named: currentSlide.imageName) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .ignoresSafeArea()
+            } else {
+                tutorialPlaceholder
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Spacer()
+
+                Button(action: next) {
+                    HStack(spacing: 7) {
+                        Text("Next")
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(OVTheme.heading(16))
+                    .foregroundStyle(OVTheme.midnight)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 13)
+                    .background(Color.white)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 22)
+            .padding(.bottom, 14)
+        }
+    }
+
+    private var tutorialPlaceholder: some View {
+        VStack(spacing: 14) {
+            Text(currentSlide.fallbackTitle)
+                .font(OVTheme.display(34))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+
+            Text(currentSlide.imageName + ".png")
+                .font(OVTheme.body(15))
+                .foregroundStyle(Color.white.opacity(0.72))
+        }
+        .padding(28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(OVTheme.midnight)
+    }
+
+    private func next() {
+        if index + 1 >= slides.count {
+            onComplete()
+        } else {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                index += 1
+            }
+        }
     }
 }
 

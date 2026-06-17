@@ -264,12 +264,12 @@ private struct DailyVerseWidgetEntryView: View {
     }
 
     private var inlineWidget: some View {
-        Text("\(entry.verse.text) • KJV • One Visioon")
+        Text("\(entry.verse.text) • One Visioon")
     }
 
     private var metadataRow: some View {
         HStack {
-            Text("KJV")
+            Text("Bible")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(DailyVerseWidgetPalette.gold)
 

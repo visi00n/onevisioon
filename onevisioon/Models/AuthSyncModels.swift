@@ -15,6 +15,7 @@ struct UserProgressSyncSnapshot: Codable, Hashable {
     let dailyGrowthEntries: [DailyGrowthEntry]
     let activityDayKeys: [String]
     let purchasedStoreItemIDs: [String]
+    let selectedBibleVersion: String?
     let likedBibleVerseReferences: [String]
     let bibleVerseHighlights: [BibleVerseHighlight]
     let bibleVerseNotes: [BibleVerseNote]
@@ -26,5 +27,5 @@ struct UserProgressSyncSnapshot: Codable, Hashable {
     let resetChallengeProgress: ResetChallengeProgress?
     let lastReadBibleLocation: BibleLocation?
 
-    static let currentSchemaVersion = 4
+    static let currentSchemaVersion = 5
 }

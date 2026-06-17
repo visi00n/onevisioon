@@ -2,9 +2,9 @@ import Foundation
 import Security
 
 enum KeychainStore {
-    private static let service = "vsn.onevisioon"
+    nonisolated private static let service = "vsn.onevisioon"
 
-    static func save(_ value: String, account: String) throws {
+    nonisolated static func save(_ value: String, account: String) throws {
         let data = Data(value.utf8)
 
         let query: [CFString: Any] = [
@@ -34,7 +34,7 @@ enum KeychainStore {
         }
     }
 
-    static func read(account: String) throws -> String? {
+    nonisolated static func read(account: String) throws -> String? {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,
@@ -62,7 +62,7 @@ enum KeychainStore {
         return value
     }
 
-    static func delete(account: String) throws {
+    nonisolated static func delete(account: String) throws {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,

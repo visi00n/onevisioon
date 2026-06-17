@@ -316,7 +316,7 @@ private struct CourseQuestFolderView: View {
                         .background(OVTheme.midnight)
                         .clipShape(Capsule())
                 } else if !unlocked {
-                    Text("Locked: finish the previous chapter lesson first.")
+                    Text("Locked: pass the previous chapter quest with 75%+ first.")
                         .font(OVTheme.body(12))
                         .foregroundStyle(OVTheme.ink.opacity(0.55))
                 } else {
@@ -578,7 +578,7 @@ struct QuestTakeView: View {
 
             if let submission, submission.passed, let nextLesson = store.nextLesson(after: lesson) {
                 NavigationLink {
-                    ChapterStudyView(store: store, lesson: nextLesson, hasPremiumAccess: true)
+                    ChapterStudyView(store: store, lesson: nextLesson)
                 } label: {
                     Text("Continue to \(nextLesson.sourceName.replacingOccurrences(of: "Bible: ", with: ""))")
                         .font(OVTheme.heading(15))
