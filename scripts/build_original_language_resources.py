@@ -8,6 +8,8 @@ import zipfile
 from collections import defaultdict
 from pathlib import Path
 
+from build_greek_search_index import build_search_index
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RESOURCES_DIR = REPO_ROOT / "onevisioon" / "Resources"
@@ -316,7 +318,7 @@ def build_greek_word_study() -> dict[str, list[dict[str, object]]]:
             "strongs": strongs,
             "morphology": morphology,
             "transliteration": transliterate(surface),
-            "glosses": glosses[:4],
+            "glosses": glosses,
             "alignedEnglish": aligned[0] if aligned else "",
         })
 
@@ -387,7 +389,7 @@ def build_lxx_word_study_by_book() -> dict[str, dict[str, list[dict[str, object]
             "strongs": "" if strongs == "-" else normalized_strongs(strongs),
             "morphology": "" if morphology == "-" else morphology,
             "transliteration": "" if transliteration == "-" else transliteration,
-            "glosses": glosses[:4],
+            "glosses": glosses,
             "alignedEnglish": glosses[0] if glosses else "",
         })
 
@@ -420,6 +422,9 @@ def main() -> None:
             references,
         )
 
+    greek_search_index = build_search_index()
+    write_json(RESOURCES_DIR / "original-language-greek-search-index.json", greek_search_index)
+
     print(f"Wrote {len(sblgnt_verses)} SBLGNT verses")
     print(f"Wrote {sum(len(tokens) for tokens in greek_word_study.values())} Greek word-study tokens")
     print(
@@ -427,6 +432,7 @@ def main() -> None:
         f"{sum(len(tokens) for references in lxx_word_study_by_book.values() for tokens in references.values())} "
         f"Septuagint word-study tokens across {len(lxx_word_study_by_book)} books"
     )
+    print(f"Wrote {len(greek_search_index)} Greek search entries")
 
 
 if __name__ == "__main__":

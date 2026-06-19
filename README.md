@@ -1,21 +1,32 @@
-# One Visioon
+# One Visioon: THE FIRST EDITION
 
-One Visioon is a focused **Biblical Wisdom Companion** app.
+One Visioon is a Bible-centered discipleship app built for Scripture reading, guided Bible School lessons, Greek word study, prayerful reflection, and daily growth.
 
-## What it does
-- Gives Scripture-grounded guidance through a real AI companion backend.
-- Provides short Bible wisdom activities for daily practice.
-- Tracks wisdom growth across Scripture, discernment, obedience, and prayer.
+## First Edition Focus
+- Bible reader with highlights, notes, daily verse support, and original-language study.
+- Greek study tools for selected verses, including local verse meaning, full gloss range, dictionary form, Strong's number, grammar, pronunciation, and verse context.
+- Greek search with tighter matching: primary meanings first, controlled related senses second, and low-signal words like "the" or "and" filtered out.
+- Bible School lessons with chapter reading, guided teaching, reflection, sermon depth, Scripture links, history, and quests.
+- New Testament lesson folders now include Matthew, Mark, Luke, John, Acts, Romans, 1 Corinthians, and James.
+- Bible in a Year now opens its full 12-month checkpoint path.
+- Companion, Glorify, Quests, Journey, and growth tracking remain connected to the user's study progress.
 
-## App structure
-- Companion: verse, reflection, AI question/answer.
-- Activities: guided wisdom drills with completion tracking.
-- Journey: wisdom score, pillars, streak, and check-ins.
+## Tutorial Image Assets
+Tutorial slides are loaded from the asset catalog:
 
-## Real AI backend
-- Companion responses use OpenAI Chat Completions (`/v1/chat/completions`).
-- API key is stored securely in Keychain.
-- Configure API key and model from the Companion screen.
+`/Users/laptcv/Desktop/onevisioon/onevisioon/Assets.xcassets`
 
-## Removed legacy screens
-- Home, Guidance, Prayer, and Streak screens were removed.
+Create or replace image sets with these exact names:
+
+- `home1tut`, `home2tut`, `home3tut`
+- `glorify1tut`, `glorify2tut`, `glorify3tut`
+- `bible1tut`, `bible2tut`, `bible3tut`
+- `lessons1tut`, `lessons2tut`, `lessons3tut`
+- `chat1tut`, `chat2tut`, `chat3tut`
+
+Recommended image size: `1290x2796` px portrait. Use a white background and keep important text/art inside a centered safe area around `1080x2200` px. The app displays these images full-screen with `scaledToFill`, so edges can crop slightly on different iPhone sizes.
+
+## App Store Notes
+- Keep tutorial images clean, high contrast, and away from borders.
+- Do not include API keys or private credentials in the repo.
+- The Greek tools are study helps and should keep directing users back to verse and chapter context.

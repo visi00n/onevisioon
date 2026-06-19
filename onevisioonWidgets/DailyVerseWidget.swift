@@ -211,9 +211,11 @@ private struct DailyVerseWidgetEntryView: View {
     private var smallWidget: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(entry.verse.text)
-                .font(.system(size: 15, weight: .medium))
+                .font(adaptiveVerseFont(maxSize: 15, minSize: 10.5, comfortLength: 110))
                 .foregroundStyle(.white)
                 .lineLimit(6)
+                .minimumScaleFactor(0.68)
+                .allowsTightening(true)
                 .multilineTextAlignment(.leading)
 
             Spacer(minLength: 0)
@@ -230,9 +232,11 @@ private struct DailyVerseWidgetEntryView: View {
     private var mediumWidget: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(entry.verse.text)
-                .font(.system(size: 17, weight: .medium))
+                .font(adaptiveVerseFont(maxSize: 17, minSize: 12, comfortLength: 170))
                 .foregroundStyle(.white)
                 .lineLimit(7)
+                .minimumScaleFactor(0.7)
+                .allowsTightening(true)
                 .multilineTextAlignment(.leading)
 
             Spacer(minLength: 0)
@@ -249,9 +253,11 @@ private struct DailyVerseWidgetEntryView: View {
     private var rectangularWidget: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(entry.verse.text)
-                .font(.system(size: 12, weight: .medium))
+                .font(adaptiveVerseFont(maxSize: 12, minSize: 8.5, comfortLength: 62))
                 .foregroundStyle(.white)
                 .lineLimit(3)
+                .minimumScaleFactor(0.65)
+                .allowsTightening(true)
 
             Spacer(minLength: 0)
 
@@ -279,6 +285,12 @@ private struct DailyVerseWidgetEntryView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(DailyVerseWidgetPalette.muted)
         }
+    }
+
+    private func adaptiveVerseFont(maxSize: CGFloat, minSize: CGFloat, comfortLength: Int) -> Font {
+        let excessCharacters = max(0, entry.verse.text.count - comfortLength)
+        let reduction = min(maxSize - minSize, CGFloat(excessCharacters) / 20)
+        return .system(size: maxSize - reduction, weight: .medium)
     }
 }
 

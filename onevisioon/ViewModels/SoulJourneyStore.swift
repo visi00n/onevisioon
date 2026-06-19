@@ -332,7 +332,7 @@ final class SoulJourneyStore: ObservableObject {
     }
 
     var allCourses: [WisdomCourse] {
-        [course, legacyCourse, yearCourse]
+        [course, legacyCourse, yearCourse, wisdomV2Course]
     }
 
     var allLessons: [WisdomLesson] {
@@ -636,7 +636,11 @@ final class SoulJourneyStore: ObservableObject {
     }
 
     func nextLesson(after lesson: WisdomLesson) -> WisdomLesson? {
-        lessons(containing: lesson).first(where: { $0.order == lesson.order + 1 })
+        if let chapterLesson = LessonLibraryContent.nextChapterLesson(after: lesson) {
+            return chapterLesson
+        }
+
+        return lessons(containing: lesson).first(where: { $0.order == lesson.order + 1 })
     }
 
     func exportSyncSnapshot() -> UserProgressSyncSnapshot {
@@ -1404,7 +1408,7 @@ final class SoulJourneyStore: ObservableObject {
         let cleaned = reference.trimmed
         guard !cleaned.isEmpty else { return false }
         return bibleVerseNotes.contains(where: {
-            $0.references.contains(cleaned) && $0.version == selectedBibleVersion
+            $0.references.contains(cleaned)
         })
     }
 

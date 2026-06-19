@@ -95,7 +95,7 @@ private struct LessonHubFolder: Identifiable, Hashable {
             id: "bible-in-a-year",
             title: "Bible in a Year",
             destination: .bibleInAYear,
-            isEnabled: false
+            isEnabled: true
         ),
         LessonHubFolder(
             id: "reset-with-god",
@@ -123,8 +123,8 @@ private struct LessonBook: Identifiable, Hashable {
         LessonBook(id: "luke", title: "Luke", isEnabled: true),
         LessonBook(id: "john", title: "John", isEnabled: true),
         LessonBook(id: "acts", title: "Acts", isEnabled: true),
-        LessonBook(id: "romans", title: "Romans", isEnabled: false),
-        LessonBook(id: "1-corinthians", title: "1 Corinthians", isEnabled: false),
+        LessonBook(id: "romans", title: "Romans", isEnabled: true),
+        LessonBook(id: "1-corinthians", title: "1 Corinthians", isEnabled: true),
         LessonBook(id: "2-corinthians", title: "2 Corinthians", isEnabled: false),
         LessonBook(id: "galatians", title: "Galatians", isEnabled: false),
         LessonBook(id: "ephesians", title: "Ephesians", isEnabled: false),
@@ -137,7 +137,7 @@ private struct LessonBook: Identifiable, Hashable {
         LessonBook(id: "titus", title: "Titus", isEnabled: false),
         LessonBook(id: "philemon", title: "Philemon", isEnabled: false),
         LessonBook(id: "hebrews", title: "Hebrews", isEnabled: false),
-        LessonBook(id: "james", title: "James", isEnabled: false),
+        LessonBook(id: "james", title: "James", isEnabled: true),
         LessonBook(id: "1-peter", title: "1 Peter", isEnabled: false),
         LessonBook(id: "2-peter", title: "2 Peter", isEnabled: false),
         LessonBook(id: "1-john", title: "1 John", isEnabled: false),
@@ -466,10 +466,52 @@ private struct NewTestamentBookChapterFolderView: View {
 private struct BibleInAYearFolderView: View {
     @ObservedObject var store: SoulJourneyStore
 
+    private var lessons: [WisdomLesson] {
+        store.lessons(for: store.yearCourse)
+    }
+
     var body: some View {
         ScrollView {
-            VStack(spacing: OVTheme.cardSpacing) {
-                LessonBookRow(title: "Bible in a Year", isEnabled: false)
+            VStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Bible in a Year")
+                        .font(OVTheme.display(34))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text("Twelve monthly checkpoints keep the full Bible storyline clear while you read. Pass each quest with 75% or higher to unlock the next month.")
+                        .font(OVTheme.body(14))
+                        .foregroundStyle(OVTheme.ink.opacity(0.72))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(OVTheme.cardPadding)
+                .premiumSurfaceCard(cornerRadius: 24, fill: OVTheme.elevatedCard)
+
+                ForEach(lessons) { lesson in
+                    let isUnlocked = store.isLessonUnlocked(lesson)
+
+                    if isUnlocked {
+                        NavigationLink {
+                            ChapterStudyView(
+                                store: store,
+                                lesson: lesson
+                            )
+                        } label: {
+                            LessonBookRow(
+                                title: "Month \(lesson.order)",
+                                subtitle: chapterSubtitle(for: lesson),
+                                isEnabled: true
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        LessonBookRow(
+                            title: "Month \(lesson.order)",
+                            subtitle: lockedSubtitle(for: lesson),
+                            isEnabled: false,
+                            lockedText: "Locked"
+                        )
+                    }
+                }
             }
             .padding(.horizontal, OVTheme.screenHorizontalPadding)
             .padding(.vertical, OVTheme.screenVerticalPadding)
@@ -477,6 +519,22 @@ private struct BibleInAYearFolderView: View {
         .background(OVTheme.mainBackground.ignoresSafeArea())
         .navigationTitle("Bible in a Year")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func chapterSubtitle(for lesson: WisdomLesson) -> String {
+        let progress = store.progress(for: lesson)
+        if progress.quizPassed {
+            return "\(lesson.studyReference) • Quest passed"
+        }
+        if progress.lessonCompleted {
+            return "\(lesson.studyReference) • Quest ready"
+        }
+        return lesson.title
+    }
+
+    private func lockedSubtitle(for lesson: WisdomLesson) -> String {
+        guard lesson.order > 1 else { return lesson.title }
+        return "Pass Month \(lesson.order - 1) quest with 75%+"
     }
 }
 
@@ -674,14 +732,31 @@ private struct NTBookLessonPlan: Hashable {
     var chapterCount: Int { chapters.count }
 }
 
-private enum LessonLibraryContent {
+enum LessonLibraryContent {
     static func supportsBook(id: String) -> Bool {
-        id == "matthew" || ntBookPlansByID[id] != nil
+        id == "matthew" || id == "james" || ntBookPlansByID[id] != nil
+    }
+
+    static func nextChapterLesson(after lesson: WisdomLesson) -> WisdomLesson? {
+        guard let current = chapterLessonParts(from: lesson.id) else { return nil }
+        let nextChapter = current.chapter + 1
+
+        guard hasLesson(bookID: current.bookID, chapterNumber: nextChapter) else {
+            return nil
+        }
+
+        return Self.lesson(for: current.bookID, chapterNumber: nextChapter)
     }
 
     static func lesson(for bookID: String, chapterNumber: Int) -> WisdomLesson {
         if bookID == "matthew" {
             return matthewLesson(for: chapterNumber)
+        }
+
+        if bookID == "james" {
+            return WisdomCourse.jamesBibleSchool.lessons.first(where: { $0.order == chapterNumber })
+                ?? WisdomCourse.jamesBibleSchool.lessons.first
+                ?? matthewLesson(for: 1)
         }
 
         guard let plan = ntBookPlansByID[bookID],
@@ -692,7 +767,7 @@ private enum LessonLibraryContent {
         return lesson(from: profile, plan: plan)
     }
 
-    static func content(for lessonID: String) -> LessonChapterContent? {
+    fileprivate static func content(for lessonID: String) -> LessonChapterContent? {
         if lessonID == matthewChapter1Lesson.id {
             return matthewChapter1Content
         }
@@ -791,13 +866,7 @@ private enum LessonLibraryContent {
                 "So do not finish \(plan.name) \(profile.chapter) with vague inspiration. Receive what God reveals, repent where the chapter exposes you, and take the faithful next step: \(profile.application)"
             ],
             scriptureLinks: generatedScriptureLinks(for: profile, plan: plan),
-            historyNotes: [
-                HistoryNoteContent(title: "Author and setting", detail: plan.authorNote),
-                HistoryNoteContent(title: "First hearers", detail: plan.audienceNote),
-                HistoryNoteContent(title: "Historical frame", detail: plan.historyFrame),
-                HistoryNoteContent(title: "Chapter focus", detail: profile.movement),
-                HistoryNoteContent(title: "Why it still matters", detail: plan.discipleshipThread)
-            ],
+            historyNotes: generatedHistoryNotes(for: profile, plan: plan),
             practiceSteps: [
                 "Write a one-sentence summary of \(plan.name) \(profile.chapter) using the chapter's own movement.",
                 "Name one place where this chapter convicts, corrects, or reorders your heart.",
@@ -805,6 +874,28 @@ private enum LessonLibraryContent {
             ],
             wordInsightsByReference: [:]
         )
+    }
+
+    private static func generatedHistoryNotes(
+        for profile: NTChapterLessonProfile,
+        plan: NTBookLessonPlan
+    ) -> [HistoryNoteContent] {
+        [
+            HistoryNoteContent(title: "Author and setting", detail: plan.authorNote),
+            HistoryNoteContent(title: "First hearers", detail: plan.audienceNote),
+            HistoryNoteContent(title: "Historical frame", detail: plan.historyFrame),
+            HistoryNoteContent(title: "Chapter focus", detail: profile.movement),
+            HistoryNoteContent(title: "Why it still matters", detail: plan.discipleshipThread)
+        ] + nameOriginNotes(in: [
+            plan.name,
+            plan.authorNote,
+            plan.audienceNote,
+            plan.historyFrame,
+            profile.title,
+            profile.movement,
+            profile.keyTruth,
+            profile.sermonFocus
+        ])
     }
 
     private static func generatedScriptureLinks(
@@ -908,6 +999,72 @@ private enum LessonLibraryContent {
 
         return nil
     }
+
+    private static func chapterLessonParts(from lessonID: String) -> (bookID: String, chapter: Int)? {
+        if let chapter = matthewChapterNumber(from: lessonID) {
+            return ("matthew", chapter)
+        }
+
+        if let parsed = generatedNTLessonID(from: lessonID) {
+            return parsed
+        }
+
+        return nil
+    }
+
+    private static func hasLesson(bookID: String, chapterNumber: Int) -> Bool {
+        if bookID == "matthew" {
+            return chapterNumber == 1 || matthewSeedsByChapter[chapterNumber] != nil
+        }
+
+        if bookID == "james" {
+            return WisdomCourse.jamesBibleSchool.lessons.contains(where: { $0.order == chapterNumber })
+        }
+
+        return ntBookPlansByID[bookID]?.chapters.contains(where: { $0.chapter == chapterNumber }) ?? false
+    }
+
+    private static func nameOriginNotes(in segments: [String]) -> [HistoryNoteContent] {
+        let haystack = segments.joined(separator: " ").lowercased()
+        return biblicalNameOrigins.compactMap { origin in
+            guard haystack.localizedCaseInsensitiveContains(origin.name) else { return nil }
+            return HistoryNoteContent(
+                title: "Name origin: \(origin.displayName)",
+                detail: origin.detail
+            )
+        }
+        .prefix(4)
+        .map { $0 }
+    }
+
+    private static let biblicalNameOrigins: [(name: String, displayName: String, detail: String)] = [
+        ("jesus", "Jesus", "Jesus comes from the Hebrew name Yeshua/Joshua, meaning 'The Lord saves.' The name itself announces His mission to save His people from their sins."),
+        ("christ", "Christ", "Christ comes from the Greek Christos, meaning 'Anointed One.' It points to the promised King, Priest, and deliverer God sends."),
+        ("immanuel", "Immanuel", "Immanuel comes from Hebrew and means 'God with us.' Matthew uses it to show that God has come near in the Messiah."),
+        ("abraham", "Abraham", "Abraham means 'father of a multitude.' His name carries the covenant promise that blessing would reach many nations through his seed."),
+        ("david", "David", "David means 'beloved.' In the Gospels, David's name also signals the royal promise that the Messiah would come from his line."),
+        ("joseph", "Joseph", "Joseph means 'may he add.' In Matthew 1, Joseph stands in David's line and receives Jesus as legal son through obedient faith."),
+        ("mary", "Mary", "Mary is the Greek form of Miriam. Its exact root is debated, but the name ties Jesus' birth to real Jewish family history."),
+        ("john", "John", "John comes from Hebrew Yohanan, meaning 'The Lord has been gracious.' That meaning fits John the Baptist's role as a mercy-filled witness preparing the way."),
+        ("peter", "Peter", "Peter comes from Greek Petros, meaning 'rock.' Jesus uses the name to teach about confession, weakness, restoration, and leadership."),
+        ("james", "James", "James is the English form of Jacob, a name connected with Israel's story of struggle, promise, and covenant mercy."),
+        ("paul", "Paul", "Paul comes from Latin Paulus, meaning 'small' or 'humble.' The apostle's Roman name fits his Gentile mission in the wider empire."),
+        ("saul", "Saul", "Saul means 'asked for.' Acts uses Saul/Paul's name shift inside the story of a persecutor transformed into a witness to the nations."),
+        ("stephen", "Stephen", "Stephen comes from Greek Stephanos, meaning 'crown.' Acts presents him as a faithful witness crowned through suffering."),
+        ("cornelius", "Cornelius", "Cornelius is a Roman family name. His story in Acts highlights the gospel crossing ethnic and cultural boundaries."),
+        ("barnabas", "Barnabas", "Barnabas is explained in Acts as 'son of encouragement.' His name fits his ministry of strengthening others."),
+        ("theophilus", "Theophilus", "Theophilus means 'lover of God' or 'friend of God.' Luke addresses him so believers may have certainty about Jesus."),
+        ("herod", "Herod", "Herod is a Greek royal name tied to the Herodian dynasty. In the Gospels it often signals political power resisting God's King."),
+        ("caesar", "Caesar", "Caesar became an imperial title in Rome. Gospel references to Caesar set earthly empire beside God's kingdom and Christ's lordship."),
+        ("rome", "Rome", "Rome was the empire's capital and a symbol of Gentile power, public order, and imperial reach. New Testament references to Rome often place gospel witness before the wider world."),
+        ("romans", "Romans", "Romans names believers living in the empire's capital. Paul's letter teaches that God's righteousness in Christ creates one people from Jews and Gentiles."),
+        ("corinth", "Corinth", "Corinth was a wealthy Roman trade city marked by status competition, public rhetoric, temples, and moral confusion. First Corinthians applies the cross to a church under that pressure."),
+        ("corinthians", "Corinthians", "Corinthians names the believers in Corinth whom Paul corrects and pastors toward holiness, unity, love, orderly worship, and resurrection hope."),
+        ("apollos", "Apollos", "Apollos was an eloquent teacher connected with Corinth. Paul names him to correct leader-centered factions and redirect attention to God who gives the growth."),
+        ("jerusalem", "Jerusalem", "Jerusalem is the covenant city of temple, kingship, worship, conflict, death, resurrection, and mission in Luke-Acts."),
+        ("galilee", "Galilee", "Galilee means a district or region. The Gospels often show Jesus beginning and returning to ministry among ordinary and mixed communities."),
+        ("samaria", "Samaria", "Samaria names a region marked by deep Jewish-Samaritan tension. In Acts, its inclusion shows the gospel healing old boundaries.")
+    ]
 
     static let matthewChapter1Lesson = WisdomLesson(
         id: "matthew-chapter-1",
@@ -1385,6 +1542,72 @@ private enum LessonLibraryContent {
                 ntChapter(27, "Providence in the Storm", movement: "Paul sailing toward Rome, enduring a violent storm, and encouraging everyone with God's promise", keyTruth: "God preserves His servant and keeps His promise through terrifying circumstances", application: "speak courage from God's word while the storm is still raging", sermonFocus: "Faith does not deny the storm; it trusts the God who has spoken inside it."),
                 ntChapter(28, "Unhindered Witness in Rome", movement: "Paul surviving Malta, healing, reaching Rome, preaching the kingdom, and teaching about Jesus unhindered", keyTruth: "the Word of God continues unhindered to the heart of empire", application: "keep proclaiming the kingdom wherever God places you", sermonFocus: "Acts ends with chains on Paul but no chains on the gospel.")
             ]
+        ),
+        NTBookLessonPlan(
+            id: "romans",
+            name: "Romans",
+            authorNote: "Romans is Paul's carefully argued gospel letter to believers in Rome. He had not yet visited them, so he writes a wide, ordered presentation of sin, grace, justification, union with Christ, life in the Spirit, Israel, mercy, and transformed obedience.",
+            audienceNote: "The first hearers were Jewish and Gentile believers learning to live as one church under the righteousness of God revealed in Christ, not under pride, ethnicity, law-keeping, or self-made status.",
+            historyFrame: "the Roman capital and its mixed house churches, where Jewish-Gentile tensions, imperial power, moral confusion, and questions about the law all meet Paul's gospel of righteousness by faith",
+            theologicalLens: "Romans reveals God's righteousness in the gospel: sinners are justified by faith, united to Christ, freed from condemnation, renewed by the Spirit, and made into a merciful people.",
+            convictionThread: "Romans convicts self-righteousness, secret sin, boasting, despair, shallow grace, ethnic pride, and any attempt to live the Christian life by flesh instead of the Spirit.",
+            discipleshipThread: "Romans forms believers to repent honestly, trust Christ's finished work, walk by the Spirit, worship through obedience, love the body, submit humbly, and overcome evil with good.",
+            scriptureLinks: [
+                ScriptureLinkContent(reference: "Genesis 15:6", summary: "Paul uses Abraham to show that righteousness is received by faith, not achieved by works."),
+                ScriptureLinkContent(reference: "Habakkuk 2:4", summary: "Romans opens with the righteous living by faith, echoing Habakkuk's trust under pressure."),
+                ScriptureLinkContent(reference: "Ezekiel 36:26-27", summary: "Life in the Spirit answers the prophetic hope of a renewed heart and Spirit-enabled obedience.")
+            ],
+            chapters: [
+                ntChapter(1, "The Gospel Reveals God's Righteousness", movement: "Paul introducing his gospel, longing for Rome, announcing righteousness by faith, and exposing Gentile rebellion", keyTruth: "the gospel reveals God's righteousness while human sin suppresses the truth", application: "stop hiding from conviction and receive the gospel as God's power to save", sermonFocus: "The same chapter that announces saving power also exposes why every person needs it."),
+                ntChapter(2, "Judgment, Hypocrisy, and True Obedience", movement: "Paul confronting judgmental hypocrisy, false security in law, and the need for inward covenant reality", keyTruth: "God's judgment is impartial and exposes religion that judges others while excusing itself", application: "repent of hidden hypocrisy before correcting someone else", sermonFocus: "Knowing the law cannot save a heart that refuses to obey God."),
+                ntChapter(3, "All Under Sin, Justified by Grace", movement: "Paul proving universal guilt and then declaring justification through Christ's redemption", keyTruth: "all have sinned, but God justifies by grace through faith in Jesus Christ", application: "renounce boasting and rest in Christ's atoning work", sermonFocus: "The gospel does not lower God's justice; it satisfies it in Christ."),
+                ntChapter(4, "Abraham and Righteousness by Faith", movement: "Paul showing from Abraham and David that righteousness is credited by faith apart from works", keyTruth: "God counts righteousness to those who trust His promise like Abraham did", application: "believe God's promise instead of building confidence on spiritual resume", sermonFocus: "Abraham's faith looked away from his weakness and toward the God who gives life."),
+                ntChapter(5, "Peace, Hope, and the New Adam", movement: "Paul celebrating peace with God, hope through suffering, love poured out, and Christ's victory over Adam's ruin", keyTruth: "Christ brings justification, hope, and life stronger than Adam's sin and death", application: "stand in grace and let suffering produce hope rather than bitterness", sermonFocus: "Grace does not merely repair what Adam broke; it overflows through Christ."),
+                ntChapter(6, "Dead to Sin, Alive to God", movement: "Paul rejecting shallow grace and teaching union with Christ in death and resurrection", keyTruth: "believers united to Christ must no longer present themselves as slaves to sin", application: "present your body to God in a specific act of obedience today", sermonFocus: "Grace is not permission to stay enslaved; it is power to live alive to God."),
+                ntChapter(7, "Law, Sin, and the Divided Struggle", movement: "Paul explaining the law's goodness, sin's misuse of commandment, and the anguished struggle needing deliverance", keyTruth: "God's law exposes sin, but deliverance comes through Jesus Christ our Lord", application: "bring your real struggle to Christ instead of pretending the flesh can fix itself", sermonFocus: "The cry for rescue is not weakness to hide; it is honesty that points to Christ."),
+                ntChapter(8, "No Condemnation and Spirit Life", movement: "Paul proclaiming no condemnation, Spirit-led adoption, suffering with hope, intercession, and inseparable love", keyTruth: "those in Christ are free from condemnation and kept by the Spirit in God's unbreakable love", application: "walk as an adopted child instead of obeying fear", sermonFocus: "Romans 8 lifts the believer from courtroom freedom into family security and future glory."),
+                ntChapter(9, "God's Mercy and Israel's Question", movement: "Paul grieving Israel, defending God's promise, and emphasizing mercy over human claim", keyTruth: "God's saving promise rests on His mercy, not human entitlement", application: "let God's mercy humble your assumptions and deepen prayer for the lost", sermonFocus: "Paul's doctrine of mercy does not make him cold; it makes him grieve and pray."),
+                ntChapter(10, "Christ, Faith, and Gospel Proclamation", movement: "Paul contrasting misguided zeal with righteousness by faith and the preached word of Christ", keyTruth: "Christ is the end of the law for righteousness to everyone who believes", application: "confess Christ openly and support faithful gospel proclamation", sermonFocus: "Zeal without submission to Christ can be religious and still wrong."),
+                ntChapter(11, "Mercy, Mystery, and Worship", movement: "Paul explaining Israel's remnant, Gentile humility, future mercy, and ending in doxology", keyTruth: "God's mercy humbles both Jew and Gentile and leads the church into worship", application: "reject arrogance and worship the depth of God's wisdom", sermonFocus: "True theology should end with bowed hearts, not boastful arguments."),
+                ntChapter(12, "Living Sacrifices and Sincere Love", movement: "Paul calling believers to bodily worship, renewed minds, humble gifts, sincere love, and overcoming evil with good", keyTruth: "the mercy of God creates a transformed life of humble worship and love", application: "offer one ordinary part of your body and schedule to God as worship", sermonFocus: "The gospel moves from doctrine into the body, the calendar, the church, and the enemy."),
+                ntChapter(13, "Authority, Love, and Wakefulness", movement: "Paul teaching submission to authorities, love as law's fulfillment, and wakeful holiness", keyTruth: "believers live responsibly in the present because salvation's day is drawing near", application: "put off one work of darkness and practice neighbor-love", sermonFocus: "Christian freedom never becomes careless living; the day is near."),
+                ntChapter(14, "Weak, Strong, and the Lord's Servants", movement: "Paul addressing disputed practices, conscience, judgment, and love inside the church", keyTruth: "Christians belong to the Lord and must not destroy one another over disputable matters", application: "choose love over winning a preference dispute", sermonFocus: "A correct opinion can become sin when it crushes a brother or sister Christ received."),
+                ntChapter(15, "Christlike Welcome and Mission", movement: "Paul urging strong believers to bear with the weak, grounding unity in Scripture, and describing his Gentile mission", keyTruth: "Christ's welcome creates Scripture-shaped unity and outward mission", application: "welcome another believer with Christlike patience and pray for mission", sermonFocus: "The church's unity is not comfort with sameness; it is worship shaped by Christ's mercy."),
+                ntChapter(16, "Names, Partnership, and Guarded Unity", movement: "Paul greeting many coworkers, warning against division, and praising God for the revealed mystery", keyTruth: "gospel doctrine creates real partnership and must be guarded from divisive distortion", application: "honor faithful servants and guard unity around apostolic truth", sermonFocus: "Romans ends with names because doctrine is meant to build a real family of mission.")
+            ]
+        ),
+        NTBookLessonPlan(
+            id: "1-corinthians",
+            name: "1 Corinthians",
+            authorNote: "First Corinthians is Paul's pastoral correction to a gifted but troubled church in Corinth. He writes as a founding apostle to call them back to the cross, holiness, love, order, resurrection hope, and unity under Christ.",
+            audienceNote: "The first hearers were believers living in a wealthy, status-conscious, sexually confused, rhetorically proud city. Their church had real gifts, but also factions, lawsuits, immorality, worship disorder, and confusion about resurrection.",
+            historyFrame: "the Roman city of Corinth, known for trade, status competition, temples, public rhetoric, sexual immorality, and house-church tensions that tested whether the gospel would reshape community life",
+            theologicalLens: "First Corinthians applies the cross of Christ to church life: God's wisdom humbles pride, holiness protects the body, love governs gifts, and resurrection hope anchors endurance.",
+            convictionThread: "First Corinthians convicts celebrity culture, spiritual pride, sexual compromise, selfish freedom, disorderly worship, loveless giftedness, and denial of bodily resurrection.",
+            discipleshipThread: "First Corinthians forms believers to boast only in the Lord, flee immorality, honor the body, love the church, use gifts to build others, and stand firm in resurrection hope.",
+            scriptureLinks: [
+                ScriptureLinkContent(reference: "Isaiah 29:14", summary: "Paul's warning about worldly wisdom draws on God's promise to overturn proud human understanding."),
+                ScriptureLinkContent(reference: "Genesis 2:24", summary: "Paul's sexual ethics and teaching on the body echo God's creation design for covenant union."),
+                ScriptureLinkContent(reference: "Hosea 13:14", summary: "Paul's resurrection victory language draws from the prophetic hope that death will be defeated.")
+            ],
+            chapters: [
+                ntChapter(1, "The Cross and a Divided Church", movement: "Paul thanking God for grace, confronting factions, and exalting the cross over worldly wisdom", keyTruth: "the message of the cross destroys boasting and unites believers under Christ", application: "stop building identity around favorite leaders and boast in the Lord", sermonFocus: "A church can be gifted and still be divided when the cross is not central."),
+                ntChapter(2, "Wisdom from the Spirit", movement: "Paul rejecting showy eloquence, preaching Christ crucified, and explaining wisdom revealed by the Spirit", keyTruth: "God's wisdom is revealed by the Spirit and centered on the crucified Christ", application: "seek Spirit-given understanding instead of impressive religious performance", sermonFocus: "The church does not need a stage-managed gospel; it needs Christ crucified in Spirit power."),
+                ntChapter(3, "God's Field and Building", movement: "Paul exposing jealousy, correcting leader-worship, and warning how builders work on God's temple", keyTruth: "the church belongs to God, so leaders are servants and believers must build carefully", application: "serve faithfully without turning ministers into trophies", sermonFocus: "When people say 'my leader' more loudly than 'God's church,' immaturity is showing."),
+                ntChapter(4, "Servants, Stewards, and Apostolic Humility", movement: "Paul describing apostolic stewardship, confronting arrogance, and appealing as a father", keyTruth: "faithful ministry is stewardship before God, not status before people", application: "trade spiritual arrogance for humble faithfulness", sermonFocus: "The Corinthians wanted kingly status while Paul displayed cross-shaped weakness."),
+                ntChapter(5, "Holiness and Church Discipline", movement: "Paul confronting tolerated sexual immorality and commanding serious church discipline", keyTruth: "Christ's church must not boast while tolerating open, destructive sin", application: "take holiness seriously and seek restoration through truth", sermonFocus: "False compassion lets sin destroy what discipline is meant to heal."),
+                ntChapter(6, "Lawsuits, Bodies, and Belonging", movement: "Paul addressing lawsuits among believers and teaching that bodies belong to the Lord", keyTruth: "believers are washed, bought, and joined to Christ, so their bodies must glorify God", application: "flee sexual immorality and honor God with your body", sermonFocus: "The body is not disposable material; it is for the Lord and destined for resurrection."),
+                ntChapter(7, "Marriage, Singleness, and Faithful Calling", movement: "Paul giving counsel on marriage, singleness, divorce, mixed marriages, and remaining faithful in one's calling", keyTruth: "every marital or single calling must be lived in devotion to the Lord", application: "serve Christ faithfully in your present season without envy or fear", sermonFocus: "Paul refuses to make marriage or singleness an idol; both must bow to undivided devotion."),
+                ntChapter(8, "Knowledge, Love, and the Weak", movement: "Paul addressing food offered to idols and showing that love limits freedom for a weaker conscience", keyTruth: "knowledge without love can wound people Christ values", application: "limit a freedom when love for another believer requires it", sermonFocus: "Being technically right is not enough if your freedom trains another person's conscience toward harm."),
+                ntChapter(9, "Rights Surrendered for the Gospel", movement: "Paul defending apostolic rights, surrendering them for mission, and disciplining himself for the prize", keyTruth: "gospel servants may surrender legitimate rights to remove obstacles to Christ", application: "give up one preference for the sake of another person's good", sermonFocus: "Christian freedom is strongest when it can lay itself down for mission."),
+                ntChapter(10, "Warnings, Temptation, and God's Glory", movement: "Paul warning from Israel's failures, promising God's faithfulness in temptation, and calling all things toward God's glory", keyTruth: "God's people must flee idolatry and use freedom for His glory and others' good", application: "identify one escape God provides from a present temptation and take it", sermonFocus: "Temptation is common, but compromise is not inevitable because God is faithful."),
+                ntChapter(11, "Order, Honor, and the Lord's Supper", movement: "Paul addressing worship honor and correcting selfish divisions at the Lord's Supper", keyTruth: "worship must honor God's order and Christ's body, not reinforce selfish status", application: "come to worship with humility, unity, and serious remembrance of Christ", sermonFocus: "The Lord's table rebukes a church that eats while humiliating its own members."),
+                ntChapter(12, "One Body, Many Gifts", movement: "Paul teaching Spirit-given confession, diverse gifts, and one body with many members", keyTruth: "the Spirit gives different gifts so the one body of Christ is built together", application: "use your gift to serve the body and honor members that seem weaker", sermonFocus: "Diversity of gifts is not competition; it is God's design for mutual care."),
+                ntChapter(13, "The More Excellent Way of Love", movement: "Paul showing that gifts without love are empty and that love endures beyond partial knowledge", keyTruth: "love is the necessary way that gives spiritual gifts their godly shape", application: "practice patient, humble love before trying to prove giftedness", sermonFocus: "Loveless giftedness can sound impressive and still be nothing."),
+                ntChapter(14, "Gifts That Build the Church", movement: "Paul regulating prophecy, tongues, interpretation, and orderly worship for edification", keyTruth: "spiritual gifts must be used intelligibly and orderly to build up the church", application: "measure spiritual expression by whether it strengthens others", sermonFocus: "The Spirit is not honored by confusion that leaves the church unbuilt."),
+                ntChapter(15, "Resurrection at the Center", movement: "Paul rehearsing the gospel, defending bodily resurrection, and proclaiming victory over death", keyTruth: "Christ's resurrection guarantees believers' resurrection and makes labor in the Lord meaningful", application: "stand firm because your labor in the risen Christ is not vain", sermonFocus: "If resurrection falls, Christian faith collapses; because Christ is risen, hope stands."),
+                ntChapter(16, "Generosity, Watchfulness, and Love", movement: "Paul giving collection instructions, travel plans, exhortations, and final greetings", keyTruth: "resurrection-shaped believers practice generosity, courage, strength, and love", application: "do one concrete act of generous service with watchful love", sermonFocus: "Paul ends practically because resurrection hope should reshape ordinary schedules, money, and relationships.")
+            ]
         )
     ]
 
@@ -1415,7 +1638,13 @@ private enum LessonLibraryContent {
                 "So take the chapter personally today. Receive what Jesus reveals, repent where He exposes you, and take this next step: \(seed.application)"
             ],
             scriptureLinks: seed.scriptureLinks,
-            historyNotes: seed.historyNotes + [
+            historyNotes: seed.historyNotes + nameOriginNotes(in: [
+                "Matthew",
+                seed.title,
+                seed.movement,
+                seed.keyTruth,
+                seed.sermonFocus
+            ]) + [
                 HistoryNoteContent(
                     title: "Original language note",
                     detail: "Matthew is a Greek Gospel that constantly echoes the Hebrew Scriptures. The word study below focuses on Greek terms in Matthew and, where helpful, notes Hebrew or Aramaic background behind names, quotations, and worship language."

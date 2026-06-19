@@ -697,6 +697,8 @@ struct FullBibleView: View {
     @ObservedObject var store: SoulJourneyStore
     @Binding var externalTarget: BibleReferenceTarget?
 
+    @State private var showGreekSearchSheet = false
+
     var body: some View {
         NavigationStack {
             BibleLibraryScreen(store: store, externalTarget: $externalTarget)
@@ -729,9 +731,34 @@ struct FullBibleView: View {
                         }
                     }
 
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        Button {
+                            showGreekSearchSheet = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "text.magnifyingglass")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text("Greek")
+                                    .font(OVTheme.heading(13))
+                            }
+                            .foregroundStyle(OVTheme.midnight)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(OVTheme.elevatedCard)
+                            .overlay(
+                                Capsule()
+                                    .stroke(OVTheme.line, lineWidth: 1)
+                            )
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Greek word search")
+
                         AppInfoButton()
                     }
+                }
+                .sheet(isPresented: $showGreekSearchSheet) {
+                    GreekWordSearchSheet(store: store)
                 }
         }
     }
@@ -1888,11 +1915,37 @@ struct BibleChapterReaderView: View {
     }
 }
 
+private struct SelectedOriginalLanguageToken: Identifiable, Hashable {
+    let token: OriginalLanguageWordToken
+    let verseReference: String
+    let originalVerseText: String
+    let selectedVerseText: String
+
+    var id: String {
+        "\(verseReference)-\(token.id)"
+    }
+
+    var localMeaning: String {
+        token.localMeaning
+    }
+
+    var verseContextNote: String {
+        let dictionaryForm = token.lemma.isEmpty ? token.surface : token.lemma
+        let selectedText = selectedVerseText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if selectedText.isEmpty {
+            return "In \(verseReference), \(token.surface) is used with the local sense of \(localMeaning). Read \(dictionaryForm) through this verse before widening out to the full gloss range."
+        }
+
+        return "In \(verseReference), \(token.surface) is used with the local sense of \(localMeaning). In the selected translation, that sense is anchored by: \(selectedText)"
+    }
+}
+
 private struct OriginalLanguageStudySheet: View {
     let passage: OriginalLanguageStudyPassage
 
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedToken: OriginalLanguageWordToken?
+    @State private var selectedToken: SelectedOriginalLanguageToken?
 
     var body: some View {
         NavigationStack {
@@ -1982,7 +2035,11 @@ private struct OriginalLanguageStudySheet: View {
     }
 
     private func originalVerseCard(_ verse: OriginalLanguageStudyVerse) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let selectedVerseText = passage.selectedVerses
+            .first(where: { $0.reference == verse.reference })?
+            .text ?? ""
+
+        return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("\(verse.reference) Greek")
                     .font(OVTheme.heading(18))
@@ -1999,10 +2056,15 @@ private struct OriginalLanguageStudySheet: View {
                 ForEach(verse.tokens) { token in
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedToken = token
+                            selectedToken = SelectedOriginalLanguageToken(
+                                token: token,
+                                verseReference: verse.reference,
+                                originalVerseText: verse.originalText,
+                                selectedVerseText: selectedVerseText
+                            )
                         }
                     } label: {
-                        tokenChip(token)
+                        tokenChip(token, verseReference: verse.reference)
                     }
                     .buttonStyle(.plain)
                 }
@@ -2012,8 +2074,10 @@ private struct OriginalLanguageStudySheet: View {
         .ovSurfaceCard(cornerRadius: 22, fill: OVTheme.elevatedCard)
     }
 
-    private func tokenChip(_ token: OriginalLanguageWordToken) -> some View {
-        VStack(spacing: 4) {
+    private func tokenChip(_ token: OriginalLanguageWordToken, verseReference: String) -> some View {
+        let isSelected = selectedToken?.id == "\(verseReference)-\(token.id)"
+
+        return VStack(spacing: 4) {
             Text(token.surface)
                 .font(.system(size: 18, weight: .semibold, design: .serif))
                 .foregroundStyle(OVTheme.midnight)
@@ -2029,16 +2093,18 @@ private struct OriginalLanguageStudySheet: View {
         .frame(maxWidth: .infinity, minHeight: 58)
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
-        .background(selectedToken?.id == token.id ? OVTheme.lemon.opacity(0.62) : OVTheme.smoke.opacity(0.9))
+        .background(isSelected ? OVTheme.lemon.opacity(0.62) : OVTheme.smoke.opacity(0.9))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(selectedToken?.id == token.id ? OVTheme.gold.opacity(0.75) : OVTheme.line, lineWidth: 1)
+                .stroke(isSelected ? OVTheme.gold.opacity(0.75) : OVTheme.line, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func tokenDetailCard(_ token: OriginalLanguageWordToken) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private func tokenDetailCard(_ selection: SelectedOriginalLanguageToken) -> some View {
+        let token = selection.token
+
+        return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(token.surface)
                     .font(.system(size: 34, weight: .bold, design: .serif))
@@ -2049,7 +2115,7 @@ private struct OriginalLanguageStudySheet: View {
                     .foregroundStyle(OVTheme.gold)
             }
 
-            originalLanguageDetailRow("Meaning in this place", token.glossSummary)
+            originalLanguageDetailRow("Meaning in this verse", selection.localMeaning)
 
             originalLanguageDetailRow(
                 "Pronunciation",
@@ -2060,6 +2126,8 @@ private struct OriginalLanguageStudySheet: View {
                 "English used here",
                 token.alignedEnglish.isEmpty ? "English alignment is being expanded for this word." : token.alignedEnglish
             )
+
+            originalLanguageDetailRow("Full gloss range", token.glossSummary)
 
             if !token.lemma.isEmpty {
                 originalLanguageDetailRow("Dictionary form", token.lemma)
@@ -2073,15 +2141,630 @@ private struct OriginalLanguageStudySheet: View {
                 originalLanguageDetailRow("Grammar", token.morphology)
             }
 
+            Text(selection.verseContextNote)
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.84))
+                .lineSpacing(4)
+                .padding(.top, 2)
+
             Text(token.studyNote)
                 .font(OVTheme.body(14))
-                .foregroundStyle(OVTheme.ink.opacity(0.78))
+                .foregroundStyle(OVTheme.muted)
                 .lineSpacing(4)
                 .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(OVTheme.cardPadding)
         .premiumSurfaceCard(cornerRadius: 24, fill: OVTheme.lemon.opacity(0.22), shadowOpacity: 0.05)
+    }
+
+    private func originalLanguageDetailRow(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.uppercased())
+                .font(OVTheme.body(10))
+                .foregroundStyle(OVTheme.muted)
+
+            Text(value)
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink)
+        }
+    }
+}
+
+private struct GreekWordSearchSheet: View {
+    @ObservedObject var store: SoulJourneyStore
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var isSearchFocused: Bool
+
+    @State private var query = ""
+    @State private var selectedBook: String?
+    @State private var results: [GreekWordSearchEntry] = []
+    @State private var isSearching = false
+    @State private var searchWorkItem: DispatchWorkItem?
+
+    private var cleanedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canSearch: Bool {
+        GreekWordSearchEntry.canSearch(query: cleanedQuery)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
+                    headerCard
+                    searchControls
+                    resultsContent
+                }
+                .padding(.horizontal, OVTheme.screenHorizontalPadding)
+                .padding(.vertical, OVTheme.screenVerticalPadding)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(OVTheme.mainBackground.ignoresSafeArea())
+            .navigationTitle("Greek search")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(OVTheme.heading(14))
+                    .foregroundStyle(OVTheme.midnight)
+                }
+            }
+            .onChange(of: query) { _, _ in
+                scheduleSearch()
+            }
+            .onChange(of: selectedBook) { _, _ in
+                scheduleSearch(immediate: true)
+            }
+            .onDisappear {
+                searchWorkItem?.cancel()
+            }
+        }
+    }
+
+    private var headerCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Search English. Study Greek.")
+                .font(OVTheme.display(28))
+                .foregroundStyle(OVTheme.midnight)
+
+            Text("Find direct Greek word matches by Greek, Strong's number, transliteration, or English meaning. Related senses are included only when they are frequent enough in the indexed data to be useful.")
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.74))
+                .lineSpacing(2)
+
+            Text("Greek word entries indexed across Old and New Testament")
+                .font(OVTheme.body(11))
+                .foregroundStyle(OVTheme.gold)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 24, fill: OVTheme.elevatedCard)
+    }
+
+    private var searchControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(OVTheme.muted)
+
+                TextField("Search grace, faith, forgive...", text: $query)
+                    .font(OVTheme.body(16))
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                    .submitLabel(.search)
+                    .focused($isSearchFocused)
+
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                        results = []
+                        isSearching = false
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(OVTheme.muted)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear Greek search")
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .background(OVTheme.smoke.opacity(0.92))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSearchFocused ? OVTheme.gold.opacity(0.55) : OVTheme.line, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .onTapGesture {
+                isSearchFocused = true
+            }
+
+            bookFilterMenu
+        }
+        .padding(OVTheme.cardPadding)
+        .ovSurfaceCard(cornerRadius: 22)
+    }
+
+    private var bookFilterMenu: some View {
+        Menu {
+            Button {
+                selectedBook = nil
+            } label: {
+                if selectedBook == nil {
+                    Label("All books", systemImage: "checkmark")
+                } else {
+                    Text("All books")
+                }
+            }
+
+            Divider()
+
+            ForEach(BibleDataProvider.canonicalBookOrder, id: \.self) { book in
+                Button {
+                    selectedBook = book
+                } label: {
+                    if selectedBook == book {
+                        Label(book, systemImage: "checkmark")
+                    } else {
+                        Text(book)
+                    }
+                }
+            }
+        } label: {
+            HStack {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                    .font(.system(size: 15, weight: .semibold))
+
+                Text(selectedBook ?? "All books")
+                    .font(OVTheme.heading(13))
+
+                Spacer()
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+            }
+            .foregroundStyle(OVTheme.midnight)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(OVTheme.paper.opacity(0.96))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(OVTheme.line, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
+    @ViewBuilder
+    private var resultsContent: some View {
+        if !canSearch {
+            emptyState(
+                title: "Search by meaning",
+                detail: "Try a clear English word like grace, faith, forgive, love, sin, or glory; or search a Greek word, transliteration, or Strong's number."
+            )
+        } else if isSearching {
+            HStack(spacing: 12) {
+                ProgressView()
+                Text("Searching Greek word data...")
+                    .font(OVTheme.body(14))
+                    .foregroundStyle(OVTheme.muted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(OVTheme.cardPadding)
+            .ovSurfaceCard(cornerRadius: 20)
+        } else if results.isEmpty {
+            emptyState(
+                title: "No Greek matches",
+                detail: "Try a simpler English word or remove the book filter."
+            )
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("\(results.count) result\(results.count == 1 ? "" : "s")")
+                    .font(OVTheme.heading(18))
+                    .foregroundStyle(OVTheme.midnight)
+
+                ForEach(results) { entry in
+                    NavigationLink {
+                        GreekWordSearchDetailView(
+                            store: store,
+                            entry: entry,
+                            initialBookFilter: selectedBook
+                        )
+                    } label: {
+                        GreekWordSearchResultCard(entry: entry, selectedBook: selectedBook)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func emptyState(title: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(OVTheme.heading(20))
+                .foregroundStyle(OVTheme.midnight)
+
+            Text(detail)
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.muted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .ovSurfaceCard(cornerRadius: 20)
+    }
+
+    private func scheduleSearch(immediate: Bool = false) {
+        searchWorkItem?.cancel()
+
+        guard canSearch else {
+            results = []
+            isSearching = false
+            return
+        }
+
+        let currentQuery = cleanedQuery
+        let currentBook = selectedBook
+        isSearching = true
+
+        let workItem = DispatchWorkItem {
+            let matches = OriginalLanguageStudyProvider.greekWordSearchResults(
+                matching: currentQuery,
+                bookFilter: currentBook
+            )
+
+            DispatchQueue.main.async {
+                guard currentQuery == cleanedQuery, currentBook == selectedBook else { return }
+                results = matches
+                isSearching = false
+            }
+        }
+
+        searchWorkItem = workItem
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(
+            deadline: .now() + (immediate ? 0.0 : 0.25),
+            execute: workItem
+        )
+    }
+}
+
+private struct GreekWordSearchResultCard: View {
+    let entry: GreekWordSearchEntry
+    let selectedBook: String?
+
+    private var occurrenceCount: Int {
+        entry.occurrenceCount(filteredBy: selectedBook)
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            VStack(spacing: 3) {
+                Text(entry.displayGreek)
+                    .font(.system(size: 26, weight: .bold, design: .serif))
+                    .foregroundStyle(OVTheme.midnight)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                Text(entry.transliteration.isEmpty ? "Greek" : entry.transliteration)
+                    .font(OVTheme.body(11))
+                    .foregroundStyle(OVTheme.gold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(width: 82)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(entry.simpleDefinition)
+                    .font(OVTheme.heading(16))
+                    .foregroundStyle(OVTheme.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(entry.contextualDefinition)
+                    .font(OVTheme.body(13))
+                    .foregroundStyle(OVTheme.ink.opacity(0.7))
+                    .lineLimit(3)
+
+                if !entry.inDepthDefinition.isEmpty {
+                    Text(entry.inDepthDefinition)
+                        .font(OVTheme.body(12))
+                        .foregroundStyle(OVTheme.muted)
+                        .lineLimit(3)
+                }
+
+                if !entry.relatedGlosses.isEmpty {
+                    Text("Related: \(entry.relatedGlossSummary)")
+                        .font(OVTheme.body(11))
+                        .foregroundStyle(OVTheme.muted)
+                        .lineLimit(2)
+                }
+
+                HStack(spacing: 8) {
+                    Text("\(occurrenceCount) use\(occurrenceCount == 1 ? "" : "s")")
+                        .font(OVTheme.body(11))
+                        .foregroundStyle(OVTheme.midnight)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(OVTheme.smoke)
+                        .clipShape(Capsule())
+
+                    if !entry.strongs.isEmpty {
+                        Text(entry.strongs)
+                            .font(OVTheme.body(11))
+                            .foregroundStyle(OVTheme.muted)
+                    }
+                }
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(OVTheme.muted)
+                .padding(.top, 6)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .ovSurfaceCard(cornerRadius: 20)
+    }
+}
+
+private struct GreekWordSearchDetailView: View {
+    @ObservedObject var store: SoulJourneyStore
+    let entry: GreekWordSearchEntry
+
+    @State private var selectedBook: String?
+
+    init(store: SoulJourneyStore, entry: GreekWordSearchEntry, initialBookFilter: String?) {
+        self.store = store
+        self.entry = entry
+        _selectedBook = State(initialValue: initialBookFilter)
+    }
+
+    private var totalOccurrences: Int {
+        entry.occurrenceCount(filteredBy: selectedBook)
+    }
+
+    private var visibleOccurrences: [GreekWordSearchOccurrence] {
+        let limit = shouldLimitUnfilteredOccurrences ? 800 : nil
+        return entry.occurrenceList(filteredBy: selectedBook, limit: limit)
+    }
+
+    private var shouldLimitUnfilteredOccurrences: Bool {
+        selectedBook == nil && entry.occurrenceCount > 800
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
+                definitionCard
+                occurrenceFilterCard
+                occurrenceListCard
+            }
+            .padding(.horizontal, OVTheme.screenHorizontalPadding)
+            .padding(.vertical, OVTheme.screenVerticalPadding)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(OVTheme.mainBackground.ignoresSafeArea())
+        .navigationTitle(entry.displayGreek)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var definitionCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(entry.displayGreek)
+                    .font(.system(size: 38, weight: .bold, design: .serif))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Text(entry.transliteration.isEmpty ? "Greek word" : entry.transliteration)
+                    .font(OVTheme.heading(16))
+                    .foregroundStyle(OVTheme.gold)
+            }
+
+            originalLanguageDetailRow("Simple definition", entry.simpleDefinition)
+            originalLanguageDetailRow("Definition in context", entry.contextualDefinition)
+            originalLanguageDetailRow("In-depth definition", entry.inDepthDefinition)
+            originalLanguageDetailRow("Primary search meanings", entry.primaryGlossSummary)
+
+            if !entry.usageSummary.isEmpty {
+                originalLanguageDetailRow("Usage context", entry.usageSummary)
+            }
+
+            if !entry.relatedGlosses.isEmpty {
+                originalLanguageDetailRow("Related frequent senses", entry.relatedGlossSummary)
+            }
+
+            originalLanguageDetailRow("Full gloss range", entry.glossSummary)
+
+            if !entry.lemma.isEmpty {
+                originalLanguageDetailRow("Dictionary form", entry.lemma)
+            }
+
+            if !entry.strongs.isEmpty {
+                originalLanguageDetailRow("Strong's", entry.strongs)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 24, fill: OVTheme.elevatedCard)
+    }
+
+    private var occurrenceFilterCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Occurrences")
+                        .font(OVTheme.heading(20))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text("\(totalOccurrences) reference\(totalOccurrences == 1 ? "" : "s")\(selectedBook.map { " in \($0)" } ?? " across the Bible")")
+                        .font(OVTheme.body(13))
+                        .foregroundStyle(OVTheme.muted)
+                }
+
+                Spacer()
+            }
+
+            if shouldLimitUnfilteredOccurrences {
+                Text("This word is very common. Showing the first 800 references across the Bible; choose a book below to see every occurrence inside that book.")
+                    .font(OVTheme.body(12))
+                    .foregroundStyle(OVTheme.ink.opacity(0.68))
+                    .lineSpacing(2)
+            }
+
+            bookFilterMenu
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .ovSurfaceCard(cornerRadius: 22)
+    }
+
+    private var bookFilterMenu: some View {
+        Menu {
+            Button {
+                selectedBook = nil
+            } label: {
+                if selectedBook == nil {
+                    Label("All books", systemImage: "checkmark")
+                } else {
+                    Text("All books")
+                }
+            }
+
+            Divider()
+
+            ForEach(BibleDataProvider.canonicalBookOrder, id: \.self) { book in
+                if entry.hasOccurrence(in: book) {
+                    Button {
+                        selectedBook = book
+                    } label: {
+                        if selectedBook == book {
+                            Label(book, systemImage: "checkmark")
+                        } else {
+                            Text(book)
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack {
+                Image(systemName: "book")
+                    .font(.system(size: 14, weight: .semibold))
+
+                Text(selectedBook ?? "All books")
+                    .font(OVTheme.heading(13))
+
+                Spacer()
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+            }
+            .foregroundStyle(OVTheme.midnight)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(OVTheme.paper.opacity(0.96))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(OVTheme.line, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
+    private var occurrenceListCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(visibleOccurrences) { occurrence in
+                occurrenceRow(occurrence)
+            }
+        }
+    }
+
+    private func occurrenceRow(_ occurrence: GreekWordSearchOccurrence) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(occurrence.reference)
+                    .font(OVTheme.heading(15))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Spacer()
+
+                Text(occurrence.surface)
+                    .font(.system(size: 18, weight: .semibold, design: .serif))
+                    .foregroundStyle(OVTheme.gold)
+            }
+
+            if !occurrence.alignedEnglish.isEmpty {
+                Text("Meaning here: \(occurrence.alignedEnglish)")
+                    .font(OVTheme.body(12))
+                    .foregroundStyle(OVTheme.muted)
+            }
+
+            if let verseText = verseText(for: occurrence) {
+                Text(verseText)
+                    .font(OVTheme.body(14))
+                    .foregroundStyle(OVTheme.ink.opacity(0.78))
+                    .lineSpacing(3)
+
+                Text("In \(occurrence.reference), \(occurrence.surface) is tied to this verse-level sense before you widen out to the full gloss range.")
+                    .font(OVTheme.body(12))
+                    .foregroundStyle(OVTheme.muted)
+                    .lineSpacing(2)
+            }
+
+            if BibleDataProvider.chapter(
+                at: BibleLocation(book: occurrence.book, chapter: occurrence.chapter),
+                version: store.selectedBibleVersion
+            ) != nil {
+                NavigationLink {
+                    BibleChapterReaderView(
+                        store: store,
+                        target: BibleReferenceTarget(
+                            location: BibleLocation(book: occurrence.book, chapter: occurrence.chapter),
+                            verse: occurrence.verse
+                        )
+                    )
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Open in Bible")
+                            .font(OVTheme.heading(12))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .foregroundStyle(OVTheme.midnight)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(OVTheme.sand)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .ovSurfaceCard(cornerRadius: 18)
+    }
+
+    private func verseText(for occurrence: GreekWordSearchOccurrence) -> String? {
+        let location = BibleLocation(book: occurrence.book, chapter: occurrence.chapter)
+        let preferredVersion = store.selectedBibleVersion
+
+        if let text = BibleDataProvider.chapter(at: location, version: preferredVersion)?
+            .verses
+            .first(where: { $0.verse == occurrence.verse })?
+            .text {
+            return text
+        }
+
+        return BibleDataProvider.chapter(at: location, version: .esv)?
+            .verses
+            .first(where: { $0.verse == occurrence.verse })?
+            .text
     }
 
     private func originalLanguageDetailRow(_ title: String, _ value: String) -> some View {
@@ -4627,6 +5310,43 @@ private struct BibleVerseNotesSheet: View {
     @State private var editingNote: BibleVerseNote?
     @State private var editDraft = ""
     @State private var pendingDeleteNote: BibleVerseNote?
+    @State private var selectedFilter: BibleNotesFilter = .newest
+
+    private var availableFilters: [BibleNotesFilter] {
+        guard !store.sortedBibleVerseNotes.isEmpty else { return [] }
+
+        var filters: [BibleNotesFilter] = [.newest]
+        if !newTestamentNotes.isEmpty {
+            filters.append(.newTestament)
+        }
+        if !oldTestamentNotes.isEmpty {
+            filters.append(.oldTestament)
+        }
+        return filters
+    }
+
+    private var visibleNotes: [BibleVerseNote] {
+        switch selectedFilter {
+        case .newest:
+            return store.sortedBibleVerseNotes
+        case .newTestament:
+            return newTestamentNotes
+        case .oldTestament:
+            return oldTestamentNotes
+        }
+    }
+
+    private var newTestamentNotes: [BibleVerseNote] {
+        store.sortedBibleVerseNotes.filter { note in
+            noteBook(note).map(isNewTestamentBook) ?? false
+        }
+    }
+
+    private var oldTestamentNotes: [BibleVerseNote] {
+        store.sortedBibleVerseNotes.filter { note in
+            noteBook(note).map { !isNewTestamentBook($0) } ?? false
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -4650,9 +5370,8 @@ private struct BibleVerseNotesSheet: View {
                         .padding(20)
                         .ovSurfaceCard(cornerRadius: 22)
                     } else {
-                        ForEach(store.sortedBibleVerseNotes) { note in
-                            noteCard(note)
-                        }
+                        filterTabs
+                        notesContent
                     }
                 }
                 .padding(.horizontal, 20)
@@ -4668,6 +5387,12 @@ private struct BibleVerseNotesSheet: View {
                     }
                     .font(OVTheme.body(15))
                 }
+            }
+            .onAppear {
+                normalizeSelectedFilter()
+            }
+            .onChange(of: store.bibleVerseNotes) { _, _ in
+                normalizeSelectedFilter()
             }
             .sheet(item: $editingNote) { note in
                 BibleVerseNoteComposerSheet(
@@ -4702,6 +5427,71 @@ private struct BibleVerseNotesSheet: View {
             } message: {
                 Text("This will permanently remove the saved note.")
             }
+        }
+    }
+
+    private var filterTabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(availableFilters) { filter in
+                    Button {
+                        selectedFilter = filter
+                    } label: {
+                        Text(filter.title)
+                            .font(OVTheme.heading(13))
+                            .foregroundStyle(selectedFilter == filter ? .white : OVTheme.midnight)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 9)
+                            .background(selectedFilter == filter ? OVTheme.midnight : OVTheme.smoke)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var notesContent: some View {
+        if selectedFilter == .newest {
+            ForEach(visibleNotes) { note in
+                noteCard(note)
+            }
+        } else {
+            let books = visibleNoteBooks
+            ForEach(books, id: \.self) { book in
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(book)
+                        .font(OVTheme.heading(18))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    ForEach(visibleNotes.filter { noteBook($0) == book }) { note in
+                        noteCard(note)
+                    }
+                }
+            }
+        }
+    }
+
+    private var visibleNoteBooks: [String] {
+        let bookOrder = Dictionary(
+            uniqueKeysWithValues: BibleDataProvider.canonicalBookOrder.enumerated().map { ($0.element, $0.offset) }
+        )
+
+        return Array(Set(visibleNotes.compactMap(noteBook)))
+            .sorted { lhs, rhs in
+                (bookOrder[lhs] ?? Int.max) < (bookOrder[rhs] ?? Int.max)
+            }
+    }
+
+    private func normalizeSelectedFilter() {
+        guard !availableFilters.isEmpty else {
+            selectedFilter = .newest
+            return
+        }
+
+        if !availableFilters.contains(selectedFilter) {
+            selectedFilter = availableFilters[0]
         }
     }
 
@@ -4806,6 +5596,36 @@ private struct BibleVerseNotesSheet: View {
 
     private func shortDate(_ date: Date) -> String {
         date.formatted(date: .abbreviated, time: .omitted)
+    }
+
+    private func noteBook(_ note: BibleVerseNote) -> String? {
+        note.references
+            .compactMap { BibleDataProvider.resolveReference(from: $0)?.location.book }
+            .first
+    }
+
+    private func isNewTestamentBook(_ book: String) -> Bool {
+        guard let index = BibleDataProvider.canonicalBookOrder.firstIndex(of: book) else { return false }
+        return index >= 39
+    }
+}
+
+private enum BibleNotesFilter: String, Identifiable {
+    case newest
+    case newTestament
+    case oldTestament
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .newest:
+            return "Newest notes"
+        case .newTestament:
+            return "New Testament"
+        case .oldTestament:
+            return "Old Testament"
+        }
     }
 }
 
