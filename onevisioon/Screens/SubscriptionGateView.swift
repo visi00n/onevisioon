@@ -254,6 +254,11 @@ struct SubscriptionGateView: View {
                     .disabled(accessManager.isPurchasing)
                     .opacity(accessManager.isPurchasing ? 0.7 : 1)
                 }
+
+                if accessManager.shouldShowYearlySpecialOffer,
+                   let specialOffer = accessManager.yearlySpecialOffer {
+                    specialYearlyOfferButton(specialOffer)
+                }
             }
 
             Text(planFootnote)
@@ -277,6 +282,52 @@ struct SubscriptionGateView: View {
             .foregroundStyle(OVTheme.midnight)
             Spacer()
         }
+    }
+
+    private func specialYearlyOfferButton(_ offer: Product.SubscriptionOffer) -> some View {
+        Button {
+            Task {
+                _ = await accessManager.purchaseYearlySpecialOffer()
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Special")
+                        .font(OVTheme.body(11))
+                        .foregroundStyle(OVTheme.gold)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(OVTheme.sand)
+                        .clipShape(Capsule())
+                    Text("Special Yearly Bible School")
+                        .font(OVTheme.heading(18))
+                        .foregroundStyle(OVTheme.ink)
+                    Text("Special yearly offer. Apple confirms eligibility and final price before purchase.")
+                        .font(OVTheme.body(13))
+                        .foregroundStyle(OVTheme.ink.opacity(0.62))
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("\(offer.displayPrice)/yr")
+                        .font(OVTheme.heading(18))
+                        .foregroundStyle(OVTheme.midnight)
+                    Text("limited yearly rate")
+                        .font(OVTheme.body(10))
+                        .foregroundStyle(OVTheme.ink.opacity(0.45))
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity)
+            .background(OVTheme.gold.opacity(0.11))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(OVTheme.gold.opacity(0.45), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(accessManager.isPurchasing)
+        .opacity(accessManager.isPurchasing ? 0.7 : 1)
     }
 
     private func subscriptionDetail(for product: Product) -> String {

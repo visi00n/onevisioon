@@ -1091,25 +1091,39 @@ private extension OnboardingView {
                 }
 
                 VStack(spacing: hasSelectedPremiumPlan ? 12 : 10) {
-                    HStack(spacing: 12) {
-                        PlanChoiceCard(
-                            title: "Monthly",
-                            price: monthlyPlanPrice,
-                            cadence: monthlyPlanCadence,
-                            selected: selectedPremiumPlan == "monthly",
-                            badge: nil
-                        ) {
-                            selectPremiumPlan("monthly")
+                    VStack(spacing: 10) {
+                        HStack(spacing: 12) {
+                            PlanChoiceCard(
+                                title: "Monthly",
+                                price: monthlyPlanPrice,
+                                cadence: monthlyPlanCadence,
+                                selected: selectedPremiumPlan == "monthly",
+                                badge: nil
+                            ) {
+                                selectPremiumPlan("monthly")
+                            }
+
+                            PlanChoiceCard(
+                                title: "Yearly",
+                                price: yearlyPlanPrice,
+                                cadence: yearlyPlanCadence,
+                                selected: selectedPremiumPlan == "yearly",
+                                badge: yearlySavingsBadge
+                            ) {
+                                selectPremiumPlan("yearly")
+                            }
                         }
 
-                        PlanChoiceCard(
-                            title: "Yearly",
-                            price: yearlyPlanPrice,
-                            cadence: yearlyPlanCadence,
-                            selected: selectedPremiumPlan == "yearly",
-                            badge: yearlySavingsBadge
-                        ) {
-                            selectPremiumPlan("yearly")
+                        if accessManager.shouldShowYearlySpecialOffer {
+                            PlanChoiceCard(
+                                title: "Special Yearly",
+                                price: yearlySpecialOfferPrice,
+                                cadence: yearlySpecialOfferCadence,
+                                selected: selectedPremiumPlan == SubscriptionAccessManager.yearlySpecialPlanSelection,
+                                badge: "SPECIAL"
+                            ) {
+                                selectPremiumPlan(SubscriptionAccessManager.yearlySpecialPlanSelection)
+                            }
                         }
                     }
                     .offset(y: hasSelectedPremiumPlan ? -6 : 0)
@@ -1683,6 +1697,14 @@ private extension OnboardingView {
     var selectedPlanSummaryLine: String {
         guard hasSelectedPremiumPlan else { return "" }
 
+        if selectedPremiumPlan == SubscriptionAccessManager.yearlySpecialPlanSelection {
+            guard accessManager.shouldShowYearlySpecialOffer else {
+                return "Apple will show the exact price before purchase."
+            }
+
+            return "\(yearlySpecialOfferPrice)/yr special yearly offer. Apple confirms eligibility and price before purchase."
+        }
+
         if selectedPremiumPlan == "yearly" {
             guard accessManager.yearlyProduct != nil else {
                 return "Apple will show the exact price before purchase."
@@ -1716,6 +1738,14 @@ private extension OnboardingView {
 
     var yearlyPlanCadence: String {
         accessManager.yearlyProduct == nil ? "" : "/yr"
+    }
+
+    var yearlySpecialOfferPrice: String {
+        accessManager.yearlySpecialOffer?.displayPrice ?? "..."
+    }
+
+    var yearlySpecialOfferCadence: String {
+        accessManager.yearlySpecialOffer == nil ? "" : "/yr"
     }
 
     var yearlySavingsBadge: String? {

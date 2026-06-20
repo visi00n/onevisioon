@@ -7,9 +7,12 @@ final class SubscriptionAccessManager: ObservableObject {
     private var updatesTask: Task<Void, Never>?
     private let billingPreviewMode = false
     private let testingFullAccessMode = false
+    private let promotionalOfferSignatureClient: StoreKitPromotionalOfferSignatureClient?
 
     static let monthlyProductID = "onevisioon.premium.monthly"
     static let yearlyProductID = "onevisioon.premium.yearly"
+    static let yearlySpecialOfferID = "onevisioon.yearly.special"
+    static let yearlySpecialPlanSelection = "yearlySpecial"
     private var subscriptionProductIDs: [String] { [Self.monthlyProductID, Self.yearlyProductID] }
 
     @Published private(set) var products: [Product] = []
@@ -42,6 +45,14 @@ final class SubscriptionAccessManager: ObservableObject {
         products.first(where: { $0.id == Self.yearlyProductID })
     }
 
+    var yearlySpecialOffer: Product.SubscriptionOffer? {
+        yearlyProduct?.subscription?.promotionalOffers.first(where: { $0.id == Self.yearlySpecialOfferID })
+    }
+
+    var shouldShowYearlySpecialOffer: Bool {
+        yearlySpecialOffer != nil && promotionalOfferSignatureClient != nil
+    }
+
     var trialDaysRemaining: Int {
         guard let end = trialExpirationDate else { return 0 }
         let remainingSeconds = max(0, end.timeIntervalSince(now))
@@ -53,6 +64,12 @@ final class SubscriptionAccessManager: ObservableObject {
     }
 
     init() {
+        if let configuration = try? SupabaseProjectConfiguration.load() {
+            promotionalOfferSignatureClient = StoreKitPromotionalOfferSignatureClient(configuration: configuration)
+        } else {
+            promotionalOfferSignatureClient = nil
+        }
+
         observeTransactionUpdates()
 
         Task {
@@ -122,7 +139,7 @@ final class SubscriptionAccessManager: ObservableObject {
         await purchase(monthlyProduct)
     }
 
-    func purchase(_ product: Product) async {
+    func purchase(_ product: Product, options: Set<Product.PurchaseOption> = []) async {
         guard isMembershipEnabled else {
             errorMessage = nil
             return
@@ -139,7 +156,7 @@ final class SubscriptionAccessManager: ObservableObject {
         defer { isPurchasing = false }
 
         do {
-            let result = try await product.purchase()
+            let result = try await product.purchase(options: options)
             switch result {
             case .success(let verification):
                 guard case .verified(let transaction) = verification else {
@@ -209,6 +226,10 @@ final class SubscriptionAccessManager: ObservableObject {
 
         errorMessage = nil
 
+        if plan == Self.yearlySpecialPlanSelection {
+            return await purchaseYearlySpecialOffer()
+        }
+
         if products.isEmpty {
             await loadProducts()
         }
@@ -239,6 +260,57 @@ final class SubscriptionAccessManager: ObservableObject {
 
         await purchase(product)
         return hasAccess
+    }
+
+    func purchaseYearlySpecialOffer() async -> Bool {
+        guard isMembershipEnabled else {
+            errorMessage = nil
+            return true
+        }
+
+        guard !billingPreviewMode else {
+            errorMessage = "Billing is disabled in preview mode."
+            return false
+        }
+
+        errorMessage = nil
+
+        if products.isEmpty {
+            await loadProducts()
+        }
+
+        if products.isEmpty {
+            try? await AppStore.sync()
+            await loadProducts()
+        }
+
+        guard let yearlyProduct else {
+            errorMessage = "Yearly plan is unavailable. Confirm `\(Self.yearlyProductID)` is active in App Store Connect."
+            return false
+        }
+
+        guard yearlySpecialOffer != nil else {
+            errorMessage = "The special yearly offer is not available from Apple yet. Confirm `\(Self.yearlySpecialOfferID)` is active under the yearly subscription."
+            return false
+        }
+
+        guard let promotionalOfferSignatureClient else {
+            errorMessage = "The special yearly offer needs the secure Supabase signing endpoint before it can be purchased."
+            return false
+        }
+
+        do {
+            let compactJWS = try await promotionalOfferSignatureClient.compactJWS(
+                productID: Self.yearlyProductID,
+                offerID: Self.yearlySpecialOfferID
+            )
+            let options = Set(Product.PurchaseOption.promotionalOffer(Self.yearlySpecialOfferID, compactJWS: compactJWS))
+            await purchase(yearlyProduct, options: options)
+            return hasAccess
+        } catch {
+            errorMessage = "The special yearly offer could not be prepared. Try again soon or choose the regular yearly plan."
+            return false
+        }
     }
 
     private func refreshEntitlements() async {

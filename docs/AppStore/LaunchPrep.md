@@ -49,6 +49,7 @@ KJV, Bible, Bible study, King James, Scripture, devotional, Christian, faith, pr
 - Explain that `Bible Study` is the self-guided path and `Bible School` is the paid subscription path.
 - Mention that Bible School uses Apple StoreKit 2 auto-renewable subscriptions.
 - Mention the product IDs: `onevisioon.premium.monthly` and `onevisioon.premium.yearly`.
+- Mention that the special yearly offer uses promotional offer ID `onevisioon.yearly.special` and requires Apple's signed promotional-offer flow.
 - Mention that Discord is optional and opens outside the app.
 - Mention that user progress is stored locally on-device in version 1.0.
 - If App Review needs paid access, provide a sandbox test account or approved StoreKit review flow details.

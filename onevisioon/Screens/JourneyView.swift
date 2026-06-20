@@ -801,7 +801,7 @@ struct ProfileView: View {
                 metricRow("Path", profile.selectedVersion == "premium" ? "Bible School" : "Studying the Bible")
             }
             if profile.selectedVersion == "premium" && !profile.selectedPremiumPlan.isEmpty {
-                metricRow("Plan", profile.selectedPremiumPlan == "yearly" ? "Yearly" : "Monthly")
+                metricRow("Plan", premiumPlanLabel(for: profile.selectedPremiumPlan))
             }
             if profile.onboardingPotentialScore > 0 {
                 metricRow("Onboarding score", "\(profile.onboardingPotentialScore)%")
@@ -812,6 +812,17 @@ struct ProfileView: View {
         }
         .padding(OVTheme.cardPadding)
         .premiumSurfaceCard(cornerRadius: 22)
+    }
+
+    private func premiumPlanLabel(for plan: String) -> String {
+        switch plan {
+        case SubscriptionAccessManager.yearlySpecialPlanSelection:
+            return "Special Yearly"
+        case "yearly":
+            return "Yearly"
+        default:
+            return "Monthly"
+        }
     }
 
     private var oneVisioonCard: some View {
