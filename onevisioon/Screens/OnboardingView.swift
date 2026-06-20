@@ -12,6 +12,7 @@ struct OnboardingView: View {
 
     @State private var step: OnboardingStage = .welcome
     @State private var showReturningAccountSheet = false
+    @State private var activePaywallOverlay: PaywallOverlay?
     @State private var loadingMessageIndex = 0
     @State private var paywallMessage = ""
 
@@ -72,6 +73,9 @@ struct OnboardingView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+            if let activePaywallOverlay {
+                paywallOverlayView(for: activePaywallOverlay)
+            }
         }
         .onAppear {
             hydrateFromProfile(store.onboardingProfile)
@@ -127,6 +131,13 @@ private extension OnboardingView {
         case membership
 
         var id: Int { rawValue }
+    }
+
+    enum PaywallOverlay: String, Identifiable {
+        case yearlySpecialOffer
+        case yearlyIntroTrial
+
+        var id: String { rawValue }
     }
 
     struct Option: Identifiable, Hashable {
@@ -1113,18 +1124,6 @@ private extension OnboardingView {
                                 selectPremiumPlan("yearly")
                             }
                         }
-
-                        if accessManager.shouldShowYearlySpecialOffer {
-                            PlanChoiceCard(
-                                title: "Special Yearly",
-                                price: yearlySpecialOfferPrice,
-                                cadence: yearlySpecialOfferCadence,
-                                selected: selectedPremiumPlan == SubscriptionAccessManager.yearlySpecialPlanSelection,
-                                badge: "SPECIAL"
-                            ) {
-                                selectPremiumPlan(SubscriptionAccessManager.yearlySpecialPlanSelection)
-                            }
-                        }
                     }
                     .offset(y: hasSelectedPremiumPlan ? -6 : 0)
                     .animation(.spring(response: 0.34, dampingFraction: 0.86), value: hasSelectedPremiumPlan)
@@ -1195,13 +1194,124 @@ private extension OnboardingView {
             Spacer()
 
             Button {
-                continueWithBibleStudy()
+                handleMembershipClose()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
                     .background(Color.white.opacity(0.1))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    func paywallOverlayView(for overlay: PaywallOverlay) -> some View {
+        ZStack {
+            Color.black.opacity(0.66).ignoresSafeArea()
+
+            switch overlay {
+            case .yearlySpecialOffer:
+                yearlySpecialOfferCard
+            case .yearlyIntroTrial:
+                yearlyIntroTrialCard
+            }
+        }
+        .transition(.opacity)
+    }
+
+    var yearlySpecialOfferCard: some View {
+        OverlayCard {
+            VStack(alignment: .leading, spacing: 16) {
+                overlayCloseButton {
+                    advanceFromYearlySpecialOffer()
+                }
+
+                Text("Special Yearly Offer")
+                    .font(OnboardingTypography.hero(28))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Text("\(yearlySpecialOfferPrice)/yr")
+                    .font(OnboardingTypography.hero(36))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Text("Apple confirms eligibility, offer duration, and final price before purchase.")
+                    .font(OnboardingTypography.body(15, weight: .semibold))
+                    .foregroundStyle(OVTheme.ink.opacity(0.76))
+
+                Text("20% of profits still go toward helping people in need.")
+                    .font(OnboardingTypography.caption)
+                    .foregroundStyle(OVTheme.ink.opacity(0.62))
+
+                GlowButton(
+                    title: accessManager.isPurchasing ? "Claiming..." : "Claim this offer",
+                    action: startYearlySpecialOffer
+                )
+                .disabled(accessManager.isPurchasing)
+                .opacity(accessManager.isPurchasing ? 0.62 : 1)
+
+                Button {
+                    advanceFromYearlySpecialOffer()
+                } label: {
+                    Text("No thanks")
+                        .font(OnboardingTypography.body(15, weight: .bold))
+                        .foregroundStyle(OVTheme.ink.opacity(0.72))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    var yearlyIntroTrialCard: some View {
+        OverlayCard {
+            VStack(alignment: .leading, spacing: 16) {
+                overlayCloseButton {
+                    activePaywallOverlay = nil
+                    continueWithBibleStudy()
+                }
+
+                Text(yearlyIntroTrialTitle)
+                    .font(OnboardingTypography.hero(26))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Text("Apple confirms trial eligibility before purchase.")
+                    .font(OnboardingTypography.body(15, weight: .semibold))
+                    .foregroundStyle(OVTheme.ink.opacity(0.78))
+
+                Text("After the trial, the regular yearly plan renews at \(yearlyPlanPrice)/yr unless canceled.")
+                    .font(OnboardingTypography.caption)
+                    .foregroundStyle(OVTheme.ink.opacity(0.66))
+
+                GlowButton(
+                    title: accessManager.isPurchasing ? "Starting..." : "Start yearly trial",
+                    action: startYearlyIntroTrial
+                )
+                .disabled(accessManager.isPurchasing)
+                .opacity(accessManager.isPurchasing ? 0.62 : 1)
+
+                Button {
+                    activePaywallOverlay = nil
+                    continueWithBibleStudy()
+                } label: {
+                    Text("No thanks")
+                        .font(OnboardingTypography.body(15, weight: .bold))
+                        .foregroundStyle(OVTheme.ink.opacity(0.72))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    func overlayCloseButton(action: @escaping () -> Void) -> some View {
+        HStack {
+            Spacer()
+            Button(action: action) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(OVTheme.midnight)
+                    .frame(width: 34, height: 34)
+                    .background(Color.white)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -1235,6 +1345,40 @@ private extension OnboardingView {
         }
     }
 
+    func handleMembershipClose() {
+        paywallMessage = ""
+
+        if accessManager.shouldShowYearlySpecialOffer {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                activePaywallOverlay = .yearlySpecialOffer
+            }
+            return
+        }
+
+        if accessManager.shouldShowYearlyIntroTrialOffer {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                activePaywallOverlay = .yearlyIntroTrial
+            }
+            return
+        }
+
+        continueWithBibleStudy()
+    }
+
+    func advanceFromYearlySpecialOffer() {
+        paywallMessage = ""
+
+        if accessManager.shouldShowYearlyIntroTrialOffer {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                activePaywallOverlay = .yearlyIntroTrial
+            }
+            return
+        }
+
+        activePaywallOverlay = nil
+        continueWithBibleStudy()
+    }
+
     func startMembership() {
         guard hasSelectedPremiumPlan else { return }
         paywallMessage = ""
@@ -1244,6 +1388,36 @@ private extension OnboardingView {
                 finishOnboarding()
             } else {
                 paywallMessage = accessManager.errorMessage ?? "We couldn't unlock full access right now."
+            }
+        }
+    }
+
+    func startYearlySpecialOffer() {
+        selectedPremiumPlan = SubscriptionAccessManager.yearlySpecialPlanSelection
+        paywallMessage = ""
+        Task {
+            let granted = await accessManager.purchaseYearlySpecialOffer()
+            if granted || accessManager.isPreviewModeActive || accessManager.hasAccess {
+                activePaywallOverlay = nil
+                finishOnboarding()
+            } else {
+                activePaywallOverlay = nil
+                paywallMessage = accessManager.errorMessage ?? "We couldn't unlock the special yearly offer right now."
+            }
+        }
+    }
+
+    func startYearlyIntroTrial() {
+        selectedPremiumPlan = "yearly"
+        paywallMessage = ""
+        Task {
+            let granted = await accessManager.purchaseSelectedPlan("yearly")
+            if granted || accessManager.isPreviewModeActive || accessManager.hasAccess {
+                activePaywallOverlay = nil
+                finishOnboarding()
+            } else {
+                activePaywallOverlay = nil
+                paywallMessage = accessManager.errorMessage ?? "We couldn't start the yearly plan right now."
             }
         }
     }
@@ -1267,6 +1441,7 @@ private extension OnboardingView {
     }
 
     func continueWithBibleStudy() {
+        activePaywallOverlay = nil
         var profile = buildProfile()
         profile.selectedVersion = "study"
         profile.selectedPremiumPlan = ""
@@ -1275,6 +1450,7 @@ private extension OnboardingView {
     }
 
     func finishOnboarding() {
+        activePaywallOverlay = nil
         var profile = buildProfile()
         profile.selectedVersion = "premium"
         profile.selectedPremiumPlan = selectedPremiumPlan
@@ -1504,6 +1680,7 @@ private extension OnboardingView {
         withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
             if newStep == .membership && !store.onboardingCompleted {
                 selectedPremiumPlan = ""
+                activePaywallOverlay = nil
             }
             step = newStep
         }
@@ -1744,8 +1921,33 @@ private extension OnboardingView {
         accessManager.yearlySpecialOffer?.displayPrice ?? "..."
     }
 
-    var yearlySpecialOfferCadence: String {
-        accessManager.yearlySpecialOffer == nil ? "" : "/yr"
+    var yearlyIntroTrialTitle: String {
+        guard let offer = accessManager.yearlyIntroductoryOffer else {
+            return "Try One Visioon"
+        }
+
+        return "Try One Visioon free for \(formattedOfferPeriod(for: offer))"
+    }
+
+    func formattedOfferPeriod(for offer: Product.SubscriptionOffer) -> String {
+        let period = offer.period
+        let count = max(1, period.value * max(1, offer.periodCount))
+
+        let unit: String
+        switch period.unit {
+        case .day:
+            unit = count == 1 ? "day" : "days"
+        case .week:
+            unit = count == 1 ? "week" : "weeks"
+        case .month:
+            unit = count == 1 ? "month" : "months"
+        case .year:
+            unit = count == 1 ? "year" : "years"
+        @unknown default:
+            unit = count == 1 ? "period" : "periods"
+        }
+
+        return "\(count) \(unit)"
     }
 
     var yearlySavingsBadge: String? {
@@ -3130,6 +3332,25 @@ private struct PlanChoiceCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct OverlayCard<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack {
+            Spacer()
+
+            VStack {
+                content
+            }
+            .padding(22)
+            .background(OVTheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .padding(.horizontal, 22)
+            .padding(.bottom, 28)
+        }
     }
 }
 

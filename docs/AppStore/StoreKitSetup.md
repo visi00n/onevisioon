@@ -84,6 +84,27 @@ The app calls this Supabase Edge Function:
 
 The Edge Function should use App Store Connect In-App Purchase signing credentials stored as Supabase secrets. Required secrets depend on the signing implementation, but keep the private key server-only.
 
+## Purchase Flow Audit
+
+Onboarding sequence:
+1. The first membership screen shows only normal monthly and yearly plans.
+2. If the user closes that screen and the special offer is available, the app opens the special yearly promotional-offer popup.
+3. If the user closes the special offer and the yearly intro trial is available, the app opens the yearly intro-trial popup.
+4. If the user closes the final offer, onboarding continues with the free Bible Study path.
+
+| Screen | Button | Product ID | Offer ID | Billing behavior |
+| --- | --- | --- | --- | --- |
+| Onboarding normal paywall | Monthly | `onevisioon.premium.monthly` | None in code | Purchases the monthly subscription. Apple shows the final localized monthly price. |
+| Onboarding normal paywall | Yearly | `onevisioon.premium.yearly` | None in code | Purchases the yearly subscription. If the customer is eligible for the yearly introductory offer, StoreKit can attach it automatically. |
+| Onboarding special offer popup | Claim this offer | `onevisioon.premium.yearly` | `onevisioon.yearly.special` | Purchases the yearly subscription with the signed promotional offer. Apple confirms eligibility, offer terms, and final price. |
+| Onboarding intro trial popup | Start yearly trial | `onevisioon.premium.yearly` | None in code | Purchases the yearly subscription. StoreKit applies the configured yearly introductory free trial automatically for eligible customers, then renews at the regular yearly price. |
+| Bible School subscription screen | Start Monthly Plan / Start Bible School Trial | `onevisioon.premium.monthly` | None in code | Purchases the monthly subscription. Trial wording appears only if Apple returns a monthly free trial. |
+| Bible School subscription screen | Monthly plan row | `onevisioon.premium.monthly` | None in code | Purchases the monthly subscription. |
+| Bible School subscription screen | Yearly plan row | `onevisioon.premium.yearly` | None in code | Purchases the yearly subscription. If eligible, StoreKit can attach the yearly introductory offer. |
+| Bible School subscription screen | Special Yearly Bible School | `onevisioon.premium.yearly` | `onevisioon.yearly.special` | Purchases the yearly subscription with the signed promotional offer. |
+
+No app screen should hardcode `$5.00/month`, `$59.99/year`, `$14.99/month`, `$6.99/month`, or `$83/year`. The app reads product and offer prices from StoreKit. If App Store Connect pricing changes, the app follows Apple's returned price strings.
+
 ## App Store Connect Checklist
 1. Sign the latest Paid Apps Agreement.
 2. Complete banking and tax information.

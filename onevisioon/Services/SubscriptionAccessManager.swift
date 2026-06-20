@@ -53,6 +53,19 @@ final class SubscriptionAccessManager: ObservableObject {
         yearlySpecialOffer != nil && promotionalOfferSignatureClient != nil
     }
 
+    var yearlyIntroductoryOffer: Product.SubscriptionOffer? {
+        guard let offer = yearlyProduct?.subscription?.introductoryOffer,
+              offer.paymentMode == .freeTrial else {
+            return nil
+        }
+
+        return offer
+    }
+
+    var shouldShowYearlyIntroTrialOffer: Bool {
+        yearlyIntroductoryOffer != nil
+    }
+
     var trialDaysRemaining: Int {
         guard let end = trialExpirationDate else { return 0 }
         let remainingSeconds = max(0, end.timeIntervalSince(now))
