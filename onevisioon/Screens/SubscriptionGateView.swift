@@ -1,13 +1,23 @@
+import Foundation
 import SwiftUI
 import StoreKit
 
 struct SubscriptionGateView: View {
     @ObservedObject var accessManager: SubscriptionAccessManager
-    private let launchMonthlyPrice = 15
-    private let launchYearlyPrice = 80
 
-    private var yearlyVsMonthlyDiscountPercent: Int {
-        Int(round((1 - (Double(launchYearlyPrice) / Double(launchMonthlyPrice * 12))) * 100))
+    private var yearlyVsMonthlyDiscountPercent: Int? {
+        guard let monthlyProduct = accessManager.monthlyProduct,
+              let yearlyProduct = accessManager.yearlyProduct else {
+            return nil
+        }
+
+        let monthlyYearCost = NSDecimalNumber(decimal: monthlyProduct.price).doubleValue * 12
+        let yearlyCost = NSDecimalNumber(decimal: yearlyProduct.price).doubleValue
+        guard monthlyYearCost > 0, yearlyCost > 0, yearlyCost < monthlyYearCost else {
+            return nil
+        }
+
+        return Int(round((1 - (yearlyCost / monthlyYearCost)) * 100))
     }
 
     var body: some View {
@@ -102,10 +112,10 @@ struct SubscriptionGateView: View {
 
                 Button {
                     Task {
-                        await accessManager.startMonthlyTrial()
+                        await accessManager.purchaseMonthlyPlan()
                     }
                 } label: {
-                    Text("Start Bible School Trial")
+                    Text(monthlyActionTitle)
                         .font(OVTheme.heading(16))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -185,7 +195,7 @@ struct SubscriptionGateView: View {
                     .padding(.vertical, 14)
             } else if accessManager.products.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Plans are unavailable right now. Configure `onevisioon.premium.monthly` ($\(launchMonthlyPrice)) and `onevisioon.premium.yearly` ($\(launchYearlyPrice)) in StoreKit/App Store Connect.")
+                    Text("Plans are unavailable right now. Configure `\(SubscriptionAccessManager.monthlyProductID)` and `\(SubscriptionAccessManager.yearlyProductID)` in StoreKit/App Store Connect.")
                         .font(OVTheme.body(14))
                         .foregroundStyle(OVTheme.ink.opacity(0.65))
 
@@ -223,7 +233,8 @@ struct SubscriptionGateView: View {
                                 Text(marketingPrice(for: product))
                                     .font(OVTheme.heading(18))
                                     .foregroundStyle(OVTheme.midnight)
-                                if product.id == "onevisioon.premium.yearly" {
+                                if product.id == SubscriptionAccessManager.yearlyProductID,
+                                   let yearlyVsMonthlyDiscountPercent {
                                     Text("\(yearlyVsMonthlyDiscountPercent)% lower than paying monthly")
                                         .font(OVTheme.body(11))
                                         .foregroundStyle(OVTheme.gold)
@@ -245,7 +256,7 @@ struct SubscriptionGateView: View {
                 }
             }
 
-            Text("Yearly saves \(yearlyVsMonthlyDiscountPercent)% versus paying monthly across the year. Cancel anytime from Apple ID settings.")
+            Text(planFootnote)
                 .font(OVTheme.body(12))
                 .foregroundStyle(OVTheme.ink.opacity(0.55))
         }
@@ -269,15 +280,15 @@ struct SubscriptionGateView: View {
     }
 
     private func subscriptionDetail(for product: Product) -> String {
-        let isMonthly = product.id == "onevisioon.premium.monthly"
-        let isYearly = product.id == "onevisioon.premium.yearly"
+        let isMonthly = product.id == SubscriptionAccessManager.monthlyProductID
+        let isYearly = product.id == SubscriptionAccessManager.yearlyProductID
 
         if isMonthly {
-            return "Launch monthly plan for flexible access."
+            return "Renews monthly. Apple confirms the exact price before purchase."
         }
 
         if isYearly {
-            return "Best launch value before yearly pricing rises."
+            return "Renews yearly. Apple confirms the exact price before purchase."
         }
 
         guard let period = product.subscription?.subscriptionPeriod else {
@@ -302,26 +313,26 @@ struct SubscriptionGateView: View {
     }
 
     private func planTitle(for product: Product) -> String {
-        if product.id == "onevisioon.premium.monthly" { return "Monthly Bible School" }
-        if product.id == "onevisioon.premium.yearly" { return "Yearly Bible School" }
+        if product.id == SubscriptionAccessManager.monthlyProductID { return "Monthly Bible School" }
+        if product.id == SubscriptionAccessManager.yearlyProductID { return "Yearly Bible School" }
         return product.displayName
     }
 
     private func marketingPrice(for product: Product) -> String {
-        if product.id == "onevisioon.premium.monthly" {
-            return "$\(launchMonthlyPrice)/mo"
+        if product.id == SubscriptionAccessManager.monthlyProductID {
+            return "\(product.displayPrice)/mo"
         }
-        if product.id == "onevisioon.premium.yearly" {
-            return "$\(launchYearlyPrice)/yr"
+        if product.id == SubscriptionAccessManager.yearlyProductID {
+            return "\(product.displayPrice)/yr"
         }
         return product.displayPrice
     }
 
     private func planBadge(for product: Product) -> String {
-        if product.id == "onevisioon.premium.monthly" {
+        if product.id == SubscriptionAccessManager.monthlyProductID {
             return "Bible School"
         }
-        if product.id == "onevisioon.premium.yearly" {
+        if product.id == SubscriptionAccessManager.yearlyProductID {
             return "Best value"
         }
         return "Bible School"
@@ -338,6 +349,23 @@ struct SubscriptionGateView: View {
                 .font(OVTheme.body(13))
                 .foregroundStyle(OVTheme.ink.opacity(0.78))
         }
+    }
+
+    private var monthlyActionTitle: String {
+        if let monthlyProduct = accessManager.monthlyProduct,
+           accessManager.hasFreeTrialOffer(for: monthlyProduct) {
+            return "Start Bible School Trial"
+        }
+
+        return "Start Monthly Plan"
+    }
+
+    private var planFootnote: String {
+        if let yearlyVsMonthlyDiscountPercent {
+            return "Yearly saves \(yearlyVsMonthlyDiscountPercent)% versus paying monthly across the year. Cancel anytime from Apple ID settings."
+        }
+
+        return "Apple shows the final localized price before purchase. Cancel anytime from Apple ID settings."
     }
 }
 

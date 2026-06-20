@@ -293,6 +293,14 @@
 					};
 					B4C454432F5ABA1300282297 = {
 						CreatedOnToolsVersion = 26.0.1;
+						SystemCapabilities = {
+							com.apple.InAppPurchase = {
+								enabled = 1;
+							};
+							com.apple.SignInWithApple = {
+								enabled = 1;
+							};
+						};
 					};
 					B4C454522F5ABA1400282297 = {
 						CreatedOnToolsVersion = 26.0.1;

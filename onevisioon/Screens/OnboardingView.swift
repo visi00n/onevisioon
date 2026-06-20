@@ -1,3 +1,4 @@
+import Foundation
 import AuthenticationServices
 import StoreKit
 import SwiftUI
@@ -11,8 +12,6 @@ struct OnboardingView: View {
 
     @State private var step: OnboardingStage = .welcome
     @State private var showReturningAccountSheet = false
-    @State private var activeOverlay: PaywallOverlay?
-    @State private var offerSecondsRemaining = 300
     @State private var loadingMessageIndex = 0
     @State private var paywallMessage = ""
 
@@ -73,18 +72,12 @@ struct OnboardingView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if let activeOverlay {
-                overlayView(for: activeOverlay)
-            }
         }
         .onAppear {
             hydrateFromProfile(store.onboardingProfile)
         }
         .task(id: step) {
             await handleStepSideEffects()
-        }
-        .task(id: activeOverlay) {
-            await handleOverlaySideEffects()
         }
         .onChange(of: country) { _, _ in
             syncLocationPickers()
@@ -134,13 +127,6 @@ private extension OnboardingView {
         case membership
 
         var id: Int { rawValue }
-    }
-
-    enum PaywallOverlay: String, Identifiable {
-        case oneTimeOffer
-        case freeTrial
-
-        var id: String { rawValue }
     }
 
     struct Option: Identifiable, Hashable {
@@ -1108,8 +1094,8 @@ private extension OnboardingView {
                     HStack(spacing: 12) {
                         PlanChoiceCard(
                             title: "Monthly",
-                            price: "$14.99",
-                            cadence: "/mo",
+                            price: monthlyPlanPrice,
+                            cadence: monthlyPlanCadence,
                             selected: selectedPremiumPlan == "monthly",
                             badge: nil
                         ) {
@@ -1118,10 +1104,10 @@ private extension OnboardingView {
 
                         PlanChoiceCard(
                             title: "Yearly",
-                            price: "$6.99",
-                            cadence: "/mo",
+                            price: yearlyPlanPrice,
+                            cadence: yearlyPlanCadence,
                             selected: selectedPremiumPlan == "yearly",
-                            badge: "\(yearlySavingsPercent)% OFF"
+                            badge: yearlySavingsBadge
                         ) {
                             selectPremiumPlan("yearly")
                         }
@@ -1195,9 +1181,7 @@ private extension OnboardingView {
             Spacer()
 
             Button {
-                paywallMessage = ""
-                offerSecondsRemaining = 300
-                activeOverlay = .oneTimeOffer
+                continueWithBibleStudy()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
@@ -1210,112 +1194,14 @@ private extension OnboardingView {
         }
     }
 
-    func overlayView(for overlay: PaywallOverlay) -> some View {
-        ZStack {
-            Color.black.opacity(0.66).ignoresSafeArea()
-
-            switch overlay {
-            case .oneTimeOffer:
-                oneTimeOfferCard
-            case .freeTrial:
-                freeTrialCard
-            }
-        }
-        .transition(.opacity)
-    }
-
-    var oneTimeOfferCard: some View {
-        OverlayCard {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack {
-                    Spacer()
-                    Button {
-                        activeOverlay = .freeTrial
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(OVTheme.midnight)
-                            .frame(width: 34, height: 34)
-                            .background(Color.white)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Text("One-time Offer")
-                    .font(OnboardingTypography.hero(28))
-                    .foregroundStyle(OVTheme.midnight)
-
-                Text("You won't see this again.")
-                    .font(OnboardingTypography.body(15, weight: .semibold))
-                    .foregroundStyle(OVTheme.ink.opacity(0.72))
-
-                Text("Save \(discountedSavingsPercent)% with this yearly offer")
-                    .font(OnboardingTypography.body(18, weight: .bold))
-                    .foregroundStyle(OVTheme.midnight)
-
-                Text("\(discountedMonthlyEquivalentString)/mo")
-                    .font(OnboardingTypography.hero(36))
-                    .foregroundStyle(OVTheme.midnight)
-
-                Text("Billed yearly at $\(discountedYearlyPriceString) for full access.")
-                    .font(OnboardingTypography.body(15, weight: .semibold))
-                    .foregroundStyle(OVTheme.ink.opacity(0.78))
-
-                Text("Cancel anytime.")
-                    .font(OnboardingTypography.caption)
-                    .foregroundStyle(OVTheme.ink.opacity(0.6))
-
-                Text(formattedOfferCountdown)
-                    .font(OnboardingTypography.body(15, weight: .bold))
-                    .foregroundStyle(OVTheme.coral)
-
-                GlowButton(
-                    title: "Claim this offer",
-                    action: startDiscountedYearlyMembership
-                )
-
-                Text("This yearly plan works out to \(discountedMonthlyEquivalentString)/mo. 20% of profits still go toward helping people in need.")
-                    .font(OnboardingTypography.caption)
-                    .foregroundStyle(OVTheme.ink.opacity(0.62))
-            }
-        }
-    }
-
-    var freeTrialCard: some View {
-        return OverlayCard {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Try One Visioon free for 3 days")
-                    .font(OnboardingTypography.hero(26))
-                    .foregroundStyle(OVTheme.midnight)
-
-                Text("Start free, then continue at \(discountedMonthlyEquivalentString)/mo on the yearly plan.")
-                    .font(OnboardingTypography.body(15, weight: .semibold))
-                    .foregroundStyle(OVTheme.ink.opacity(0.78))
-
-                Text("Billed yearly at $\(discountedYearlyPriceString). Save \(discountedSavingsPercent)% compared with monthly.")
-                    .font(OnboardingTypography.caption)
-                    .foregroundStyle(OVTheme.ink.opacity(0.66))
-
-                GlowButton(
-                    title: "Start my free trial",
-                    action: startDiscountedYearlyMembership
-                )
-
-                Button {
-                    activeOverlay = nil
-                    go(to: .systemBlueprint)
-                } label: {
-                    Text("No thanks")
-                        .font(OnboardingTypography.body(15, weight: .bold))
-                        .foregroundStyle(OVTheme.ink.opacity(0.72))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
     func handleStepSideEffects() async {
+        if step == .membership {
+            guard accessManager.isMembershipEnabled else { return }
+            await accessManager.refreshAccessState()
+            await accessManager.loadProducts()
+            return
+        }
+
         if step == .goals {
             syncExpandedGoalCategory()
             return
@@ -1335,22 +1221,6 @@ private extension OnboardingView {
         }
     }
 
-    func handleOverlaySideEffects() async {
-        guard activeOverlay == .oneTimeOffer else { return }
-
-        offerSecondsRemaining = 300
-
-        while activeOverlay == .oneTimeOffer && offerSecondsRemaining > 0 {
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            guard activeOverlay == .oneTimeOffer else { return }
-            offerSecondsRemaining -= 1
-        }
-
-        if activeOverlay == .oneTimeOffer && offerSecondsRemaining == 0 {
-            activeOverlay = nil
-        }
-    }
-
     func startMembership() {
         guard hasSelectedPremiumPlan else { return }
         paywallMessage = ""
@@ -1360,20 +1230,6 @@ private extension OnboardingView {
                 finishOnboarding()
             } else {
                 paywallMessage = accessManager.errorMessage ?? "We couldn't unlock full access right now."
-            }
-        }
-    }
-
-    func startDiscountedYearlyMembership() {
-        selectedPremiumPlan = "yearly"
-        paywallMessage = ""
-        Task {
-            let granted = await accessManager.purchaseSelectedPlan("yearly")
-            if granted || accessManager.isPreviewModeActive || accessManager.hasAccess {
-                activeOverlay = nil
-                finishOnboarding()
-            } else {
-                paywallMessage = accessManager.errorMessage ?? "We couldn't unlock the discounted plan right now."
             }
         }
     }
@@ -1826,38 +1682,60 @@ private extension OnboardingView {
 
     var selectedPlanSummaryLine: String {
         guard hasSelectedPremiumPlan else { return "" }
+
         if selectedPremiumPlan == "yearly" {
-            return "Only $6.99/mo billed yearly"
+            guard accessManager.yearlyProduct != nil else {
+                return "Apple will show the exact price before purchase."
+            }
+
+            if yearlySavingsPercent > 0 {
+                return "\(yearlyPlanPrice)/yr billed yearly. Saves \(yearlySavingsPercent)% versus monthly."
+            }
+
+            return "\(yearlyPlanPrice)/yr billed yearly."
         }
-        return "Just $14.99/mo"
+
+        guard accessManager.monthlyProduct != nil else {
+            return "Apple will show the exact price before purchase."
+        }
+
+        return "\(monthlyPlanPrice)/mo. Apple confirms before purchase."
+    }
+
+    var monthlyPlanPrice: String {
+        accessManager.monthlyProduct?.displayPrice ?? "..."
+    }
+
+    var monthlyPlanCadence: String {
+        accessManager.monthlyProduct == nil ? "" : "/mo"
+    }
+
+    var yearlyPlanPrice: String {
+        accessManager.yearlyProduct?.displayPrice ?? "..."
+    }
+
+    var yearlyPlanCadence: String {
+        accessManager.yearlyProduct == nil ? "" : "/yr"
+    }
+
+    var yearlySavingsBadge: String? {
+        yearlySavingsPercent > 0 ? "\(yearlySavingsPercent)% OFF" : nil
     }
 
     var yearlySavingsPercent: Int {
-        let monthlyYearCost = 14.99 * 12.0
-        let yearlyCost = 6.99 * 12.0
+        guard let monthlyProduct = accessManager.monthlyProduct,
+              let yearlyProduct = accessManager.yearlyProduct else {
+            return 0
+        }
+
+        let monthlyYearCost = NSDecimalNumber(decimal: monthlyProduct.price).doubleValue * 12
+        let yearlyCost = NSDecimalNumber(decimal: yearlyProduct.price).doubleValue
+        guard monthlyYearCost > 0, yearlyCost > 0, yearlyCost < monthlyYearCost else {
+            return 0
+        }
+
         let savings = (1.0 - (yearlyCost / monthlyYearCost)) * 100.0
         return Int(round(savings))
-    }
-
-    var discountedYearlyPriceString: String {
-        "59.99"
-    }
-
-    var discountedMonthlyEquivalentString: String {
-        String(format: "$%.2f", 59.99 / 12.0)
-    }
-
-    var discountedSavingsPercent: Int {
-        let monthlyYearCost = 14.99 * 12.0
-        let offerCost = 59.99
-        let savings = (1.0 - (offerCost / monthlyYearCost)) * 100.0
-        return Int(round(savings))
-    }
-
-    var formattedOfferCountdown: String {
-        let minutes = offerSecondsRemaining / 60
-        let seconds = offerSecondsRemaining % 60
-        return String(format: "%d:%02d remaining", minutes, seconds)
     }
 
     var usesUnitedStatesCountry: Bool {
@@ -3222,25 +3100,6 @@ private struct PlanChoiceCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(.plain)
-    }
-}
-
-private struct OverlayCard<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack {
-            Spacer()
-
-            VStack {
-                content
-            }
-            .padding(22)
-            .background(OVTheme.paper)
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .padding(.horizontal, 22)
-            .padding(.bottom, 28)
-        }
     }
 }
 

@@ -8,10 +8,9 @@ final class SubscriptionAccessManager: ObservableObject {
     private let billingPreviewMode = false
     private let testingFullAccessMode = false
 
-    // Update these IDs to match App Store Connect products.
-    private let monthlyProductID = "onevisioon.premium.monthly"
-    private let yearlyProductID = "onevisioon.premium.yearly"
-    private var subscriptionProductIDs: [String] { [monthlyProductID, yearlyProductID] }
+    static let monthlyProductID = "onevisioon.premium.monthly"
+    static let yearlyProductID = "onevisioon.premium.yearly"
+    private var subscriptionProductIDs: [String] { [Self.monthlyProductID, Self.yearlyProductID] }
 
     @Published private(set) var products: [Product] = []
     @Published private(set) var hasActiveSubscription = false
@@ -36,11 +35,11 @@ final class SubscriptionAccessManager: ObservableObject {
     }
 
     var monthlyProduct: Product? {
-        products.first(where: { $0.id == monthlyProductID })
+        products.first(where: { $0.id == Self.monthlyProductID })
     }
 
     var yearlyProduct: Product? {
-        products.first(where: { $0.id == yearlyProductID })
+        products.first(where: { $0.id == Self.yearlyProductID })
     }
 
     var trialDaysRemaining: Int {
@@ -98,7 +97,7 @@ final class SubscriptionAccessManager: ObservableObject {
         }
     }
 
-    func startMonthlyTrial() async {
+    func purchaseMonthlyPlan() async {
         guard isMembershipEnabled else {
             errorMessage = nil
             return
@@ -117,11 +116,6 @@ final class SubscriptionAccessManager: ObservableObject {
 
         guard let monthlyProduct else {
             errorMessage = "Monthly plan is unavailable. Try again in a moment."
-            return
-        }
-
-        guard hasFreeTrialOffer(for: monthlyProduct) else {
-            errorMessage = "A free trial is not configured for the monthly plan yet."
             return
         }
 
@@ -282,8 +276,8 @@ final class SubscriptionAccessManager: ObservableObject {
     }
 
     private func productSortRank(for id: String) -> Int {
-        if id == monthlyProductID { return 0 }
-        if id == yearlyProductID { return 1 }
+        if id == Self.monthlyProductID { return 0 }
+        if id == Self.yearlyProductID { return 1 }
         return 99
     }
 }
