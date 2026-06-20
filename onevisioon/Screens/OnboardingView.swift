@@ -87,7 +87,7 @@ struct OnboardingView: View {
             syncLocationPickers()
         }
         .fullScreenCover(isPresented: $showReturningAccountSheet) {
-            ReturningAccountSheet(store: store) {
+            ReturningAccountSheet(store: store, accessManager: accessManager) {
                 completeReturningSignIn()
             }
             .environmentObject(authManager)
@@ -3437,9 +3437,11 @@ private struct ReturningAccountSheet: View {
     @EnvironmentObject private var authManager: AuthSessionManager
 
     let store: SoulJourneyStore
+    @ObservedObject var accessManager: SubscriptionAccessManager
     let onSignedIn: () -> Void
 
     @State private var helperText = ""
+    @State private var isCheckingMembership = false
 
     var body: some View {
         NavigationStack {
@@ -3497,19 +3499,22 @@ private struct ReturningAccountSheet: View {
                         authManager.configureAppleRequest(request)
                     } onCompletion: { result in
                         Task {
-                            await authManager.handleAppleSignIn(result: result, store: store)
+                            await authManager.handleAppleSignIn(
+                                result: result,
+                                store: store,
+                                allowsRemoteOnboardingCompletion: false
+                            )
 
                             if authManager.isSignedIn {
-                                onSignedIn()
-                                dismiss()
+                                await completeReturningSignInIfPremium()
                             }
                         }
                     }
                     .signInWithAppleButtonStyle(.black)
                     .frame(height: 54)
                     .clipShape(Capsule())
-                    .disabled(authManager.isAuthenticating)
-                    .opacity(authManager.isAuthenticating ? 0.7 : 1)
+                    .disabled(isBusy)
+                    .opacity(isBusy ? 0.7 : 1)
 
                     if authManager.canStartGoogleSignIn {
                         GoogleAuthButton(
@@ -3519,18 +3524,24 @@ private struct ReturningAccountSheet: View {
                             helperText = ""
 
                             Task {
-                                await authManager.handleGoogleSignIn(store: store)
+                                await authManager.handleGoogleSignIn(
+                                    store: store,
+                                    allowsRemoteOnboardingCompletion: false
+                                )
 
                                 if authManager.isSignedIn {
-                                    onSignedIn()
-                                    dismiss()
+                                    await completeReturningSignInIfPremium()
                                 }
                             }
                         }
-                        .disabled(authManager.isAuthenticating)
-                        .opacity(authManager.isAuthenticating ? 0.7 : 1)
+                        .disabled(isBusy)
+                        .opacity(isBusy ? 0.7 : 1)
                     } else {
                         helperTextView("Google sign-in and cloud sync unlock after Supabase config is added.", tint: OVTheme.gold)
+                    }
+
+                    if isCheckingMembership {
+                        helperTextView("Checking your Apple subscription...", tint: OVTheme.gold)
                     }
 
                     if !helperText.isEmpty {
@@ -3557,6 +3568,32 @@ private struct ReturningAccountSheet: View {
             .padding(12)
             .background(tint.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var isBusy: Bool {
+        authManager.isAuthenticating || isCheckingMembership || accessManager.isPurchasing
+    }
+
+    private func completeReturningSignInIfPremium() async {
+        helperText = ""
+        isCheckingMembership = true
+        defer { isCheckingMembership = false }
+
+        if !accessManager.isPreviewModeActive {
+            await accessManager.refreshAccessState()
+
+            if !accessManager.hasAccess {
+                await accessManager.restorePurchases()
+            }
+        }
+
+        if accessManager.hasAccess || accessManager.isPreviewModeActive {
+            onSignedIn()
+            dismiss()
+        } else {
+            helperText = accessManager.errorMessage
+                ?? "We couldn't find an active One Visioon premium membership on this Apple ID. Restore or subscribe to continue."
+        }
     }
 }
 

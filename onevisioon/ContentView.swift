@@ -129,13 +129,13 @@ struct ContentView: View {
         .task {
             await accessManager.refreshAccessState()
             await authManager.refreshCredentialStateIfNeeded()
-            await authManager.syncCloudDataIfPossible(store: store)
+            await syncCloudDataRespectingAccess()
             await GlorifyReminderService.refreshMorningQuotesIfNeeded(using: store.glorifyReminderSettings)
             syncPreviewAccess()
             trackTodayIfUnlocked()
         }
         .task(id: authManager.currentSession?.id) {
-            await authManager.syncCloudDataIfPossible(store: store)
+            await syncCloudDataRespectingAccess()
         }
         .onChange(of: authManager.lastCloudSyncAt) { _, newValue in
             guard newValue != nil else { return }
@@ -146,14 +146,14 @@ struct ContentView: View {
         .task(id: store.cloudSyncRevision) {
             guard authManager.isSignedIn else { return }
             try? await Task.sleep(nanoseconds: 900_000_000)
-            await authManager.syncCloudDataIfPossible(store: store)
+            await syncCloudDataRespectingAccess()
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             Task {
                 await accessManager.refreshAccessState()
                 await authManager.refreshCredentialStateIfNeeded()
-                await authManager.syncCloudDataIfPossible(store: store)
+                await syncCloudDataRespectingAccess()
                 await GlorifyReminderService.refreshMorningQuotesIfNeeded(using: store.glorifyReminderSettings)
                 syncPreviewAccess()
                 trackTodayIfUnlocked()
@@ -179,6 +179,15 @@ struct ContentView: View {
 
     private func syncPreviewAccess() {
         accessManager.setPreviewSelection(store.onboardingProfile.selectedVersion)
+    }
+
+    private func syncCloudDataRespectingAccess() async {
+        await authManager.syncCloudDataIfPossible(
+            store: store,
+            allowsRemoteOnboardingCompletion: store.onboardingCompleted
+                || accessManager.hasAccess
+                || accessManager.isPreviewModeActive
+        )
     }
 }
 

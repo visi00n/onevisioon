@@ -99,7 +99,11 @@ final class AuthSessionManager: ObservableObject {
         errorMessage = ""
     }
 
-    func handleAppleSignIn(result: Result<ASAuthorization, Error>, store: SoulJourneyStore) async {
+    func handleAppleSignIn(
+        result: Result<ASAuthorization, Error>,
+        store: SoulJourneyStore,
+        allowsRemoteOnboardingCompletion: Bool = true
+    ) async {
         switch result {
         case .success(let authorization):
             guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
@@ -185,7 +189,10 @@ final class AuthSessionManager: ObservableObject {
                 currentSession = session
                 persistSession(session)
                 store.applyAuthenticatedIdentity(displayName: session.displayName, email: session.email)
-                await syncCloudDataIfPossible(store: store)
+                await syncCloudDataIfPossible(
+                    store: store,
+                    allowsRemoteOnboardingCompletion: allowsRemoteOnboardingCompletion
+                )
                 errorMessage = ""
             } catch {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not sign in with Supabase."
@@ -201,7 +208,10 @@ final class AuthSessionManager: ObservableObject {
         }
     }
 
-    func handleGoogleSignIn(store: SoulJourneyStore) async {
+    func handleGoogleSignIn(
+        store: SoulJourneyStore,
+        allowsRemoteOnboardingCompletion: Bool = true
+    ) async {
         guard let supabaseClient else {
             errorMessage = configurationMessage
             return
@@ -251,7 +261,10 @@ final class AuthSessionManager: ObservableObject {
             currentSession = session
             persistSession(session)
             store.applyAuthenticatedIdentity(displayName: session.displayName, email: session.email)
-            await syncCloudDataIfPossible(store: store)
+            await syncCloudDataIfPossible(
+                store: store,
+                allowsRemoteOnboardingCompletion: allowsRemoteOnboardingCompletion
+            )
             errorMessage = ""
         } catch {
             if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
@@ -388,7 +401,10 @@ final class AuthSessionManager: ObservableObject {
         }
     }
 
-    func syncCloudDataIfPossible(store: SoulJourneyStore) async {
+    func syncCloudDataIfPossible(
+        store: SoulJourneyStore,
+        allowsRemoteOnboardingCompletion: Bool = true
+    ) async {
         guard let currentSession, let supabaseClient else { return }
         guard currentSession.isCloudBacked else { return }
         guard !isSyncingCloud else { return }
@@ -402,10 +418,17 @@ final class AuthSessionManager: ObservableObject {
                 userID: currentSession.supabaseUserID,
                 accessToken: currentSession.accessToken
             )
+            var didBlockRemoteOnboardingCompletion = false
 
             if let remoteSnapshotRecord,
                shouldRestoreRemoteSnapshot(remoteSnapshotRecord.snapshot, over: localSnapshot) {
-                store.applySyncSnapshot(remoteSnapshotRecord.snapshot)
+                didBlockRemoteOnboardingCompletion = remoteSnapshotRecord.snapshot.onboardingCompleted
+                    && !allowsRemoteOnboardingCompletion
+
+                store.applySyncSnapshot(
+                    remoteSnapshotRecord.snapshot,
+                    allowsOnboardingCompletion: allowsRemoteOnboardingCompletion
+                )
             }
 
             let syncedProfile = try await supabaseClient.upsertProfile(
@@ -414,14 +437,16 @@ final class AuthSessionManager: ObservableObject {
             )
 
             let snapshotToUpload = store.exportSyncSnapshot()
-            _ = try await supabaseClient.upsertUserSyncSnapshot(
-                accessToken: currentSession.accessToken,
-                payload: SupabaseUserSyncSnapshotUpsertPayload(
-                    userID: currentSession.supabaseUserID,
-                    schemaVersion: snapshotToUpload.schemaVersion,
-                    snapshot: snapshotToUpload
+            if !didBlockRemoteOnboardingCompletion {
+                _ = try await supabaseClient.upsertUserSyncSnapshot(
+                    accessToken: currentSession.accessToken,
+                    payload: SupabaseUserSyncSnapshotUpsertPayload(
+                        userID: currentSession.supabaseUserID,
+                        schemaVersion: snapshotToUpload.schemaVersion,
+                        snapshot: snapshotToUpload
+                    )
                 )
-            )
+            }
 
             var refreshedSession = currentSession
             let refreshedDisplayName = syncedProfile.displayName?.trimmed ?? ""

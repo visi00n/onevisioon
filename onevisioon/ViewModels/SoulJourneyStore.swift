@@ -673,8 +673,11 @@ final class SoulJourneyStore: ObservableObject {
         )
     }
 
-    func applySyncSnapshot(_ snapshot: UserProgressSyncSnapshot) {
-        onboardingCompleted = snapshot.onboardingCompleted
+    func applySyncSnapshot(
+        _ snapshot: UserProgressSyncSnapshot,
+        allowsOnboardingCompletion: Bool = true
+    ) {
+        onboardingCompleted = allowsOnboardingCompletion ? snapshot.onboardingCompleted : false
         onboardingProfile = snapshot.onboardingProfile
         publicProfileSettings = snapshot.publicProfileSettings
         wisdomPoints = snapshot.wisdomPoints
