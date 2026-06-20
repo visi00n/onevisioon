@@ -95,7 +95,7 @@ private struct LessonHubFolder: Identifiable, Hashable {
             id: "bible-in-a-year",
             title: "Bible in a Year",
             destination: .bibleInAYear,
-            isEnabled: true
+            isEnabled: false
         ),
         LessonHubFolder(
             id: "reset-with-god",

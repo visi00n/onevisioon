@@ -332,7 +332,7 @@ final class SoulJourneyStore: ObservableObject {
     }
 
     var allCourses: [WisdomCourse] {
-        [course, legacyCourse, yearCourse, wisdomV2Course]
+        [course, legacyCourse, wisdomV2Course]
     }
 
     var allLessons: [WisdomLesson] {
