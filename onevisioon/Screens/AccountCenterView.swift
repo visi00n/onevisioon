@@ -40,11 +40,13 @@ struct AccountCenterView: View {
 
     private var accountHero: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Sign in with Apple")
+            Text(authManager.isCloudConfigured ? "Sign in with Apple or Google" : "Sign in with Apple")
                 .font(OVTheme.heading(28))
                 .foregroundStyle(OVTheme.midnight)
 
-            Text("Apple sign-in is live now. It gives you a clean, secure account identity inside the app while your study progress keeps saving on this device.")
+            Text(authManager.isCloudConfigured
+                ? "Apple and Google sign-in connect your One Visioon account to Supabase so your profile and study progress can sync securely."
+                : "Apple sign-in now saves your One Visioon account on this device. Add Supabase config when you are ready for Google sign-in and cloud sync.")
                 .font(OVTheme.body(15))
                 .foregroundStyle(OVTheme.ink.opacity(0.74))
                 .lineSpacing(3)
@@ -68,10 +70,20 @@ struct AccountCenterView: View {
                 Spacer()
 
                 statusPill(
-                    authManager.isSignedIn ? "Signed in" : "Not signed in",
-                    tint: authManager.isSignedIn ? OVTheme.mint : OVTheme.sand
+                    authManager.isSignedIn
+                        ? (authManager.isAuthenticating ? "Connecting" : "Signed in")
+                        : (authManager.isCloudConfigured ? "Cloud ready" : "Apple ready"),
+                    tint: authManager.isSignedIn ? OVTheme.mint : (authManager.isCloudConfigured ? OVTheme.sky : OVTheme.gold.opacity(0.78))
                 )
             }
+
+            Text(authManager.backendStatus.title)
+                .font(OVTheme.heading(15))
+                .foregroundStyle(OVTheme.midnight)
+
+            Text(authManager.backendStatus.detail)
+                .font(OVTheme.body(13))
+                .foregroundStyle(OVTheme.ink.opacity(0.72))
 
             if let session = authManager.currentSession {
                 VStack(alignment: .leading, spacing: 8) {
@@ -102,18 +114,41 @@ struct AccountCenterView: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                Text("Use Apple's secure button first. It saves your account on this device and fills in your name or email when Apple shares it.")
+                Text(authManager.isCloudConfigured
+                    ? "Use Apple or Google to open a secure account session and back up your study progress to the cloud."
+                    : "Use Apple to save this account on your device. Google and cloud backup will appear once Supabase is configured.")
                     .font(OVTheme.body(14))
                     .foregroundStyle(OVTheme.ink.opacity(0.72))
 
-                SignInWithAppleButton(.continue) { request in
-                    authManager.configureAppleRequest(request)
-                } onCompletion: { result in
-                    authManager.handleAppleSignIn(result: result, store: store)
+                if authManager.canStartAppleSignIn {
+                    SignInWithAppleButton(.continue) { request in
+                        authManager.configureAppleRequest(request)
+                    } onCompletion: { result in
+                        Task {
+                            await authManager.handleAppleSignIn(result: result, store: store)
+                        }
+                    }
+                    .signInWithAppleButtonStyle(.black)
+                    .frame(height: 52)
+                    .clipShape(Capsule())
+                    .disabled(authManager.isAuthenticating)
+                    .opacity(authManager.isAuthenticating ? 0.7 : 1)
                 }
-                .signInWithAppleButtonStyle(.black)
-                .frame(height: 52)
-                .clipShape(Capsule())
+
+                if authManager.canStartGoogleSignIn {
+                    GoogleAuthButton(
+                        title: "Continue with Google",
+                        isLoading: authManager.isAuthenticating
+                    ) {
+                        Task {
+                            await authManager.handleGoogleSignIn(store: store)
+                        }
+                    }
+                    .disabled(authManager.isAuthenticating)
+                    .opacity(authManager.isAuthenticating ? 0.7 : 1)
+                } else {
+                    helperMessage("Google sign-in and cloud backup unlock after Supabase config is added.", tint: OVTheme.gold)
+                }
             }
         }
         .padding(20)
@@ -123,11 +158,11 @@ struct AccountCenterView: View {
 
     private var snapshotCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Saved on this device")
+            Text("Cloud sync")
                 .font(OVTheme.heading(20))
                 .foregroundStyle(OVTheme.ink)
 
-            Text("This is the progress One Visioon is already keeping locally while Apple sign-in handles your account identity.")
+            Text("When you are signed in, One Visioon can sync your key study data with Supabase and keep a local copy on this device too.")
                 .font(OVTheme.body(14))
                 .foregroundStyle(OVTheme.ink.opacity(0.72))
 
@@ -135,12 +170,12 @@ struct AccountCenterView: View {
                 backendBullet("Lesson progress and completed chapters")
                 backendBullet("Reflections, notes, and verse highlights")
                 backendBullet("Streaks, active days, and last read chapter")
-                backendBullet("Apple account identity remembered securely on this device")
+                backendBullet(authManager.isCloudConfigured ? "Supabase-backed Apple or Google account session" : "Local Apple account session until Supabase is configured")
             }
 
             HStack(spacing: 8) {
-                statusPill("Apple live", tint: OVTheme.mint.opacity(0.78))
-                statusPill("Local progress", tint: OVTheme.sky.opacity(0.72))
+                statusPill("Supabase auth", tint: OVTheme.mint.opacity(0.78))
+                statusPill("Progress sync", tint: OVTheme.sky.opacity(0.72))
             }
         }
         .padding(20)

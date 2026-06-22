@@ -1,0 +1,78 @@
+{
+  "reference": "Matthew 1:21",
+  "language": "Greek",
+  "englishText": "She will bear a son, and you shall call his name Jesus, for he will save his people from their sins.",
+  "originalText": "τέξεται δὲ υἱὸν καὶ καλέσεις τὸ ὄνομα αὐτοῦ Ἰησοῦν· αὐτὸς γὰρ σώσει τὸν λαὸν αὐτοῦ ἀπὸ τῶν ἁμαρτιῶν αὐτῶν.",
+  "tokens": [
+    {
+      "surface": "τέξεται",
+      "lemma": "τίκτω",
+      "transliteration": "texetai",
+      "pronunciation": "TEK-seh-tie",
+      "morphology": "verb, future middle indicative, third singular",
+      "glosses": ["will bear", "will give birth"],
+      "alignedEnglish": "She will bear",
+      "quickExplanation": "The future verb points to the promised birth announced by the angel."
+    },
+    {
+      "surface": "υἱὸν",
+      "lemma": "υἱός",
+      "transliteration": "huion",
+      "pronunciation": "hwee-ON",
+      "morphology": "noun, accusative masculine singular",
+      "glosses": ["son"],
+      "alignedEnglish": "a son",
+      "quickExplanation": "The promised child is identified before His saving name and mission are explained."
+    },
+    {
+      "surface": "καλέσεις",
+      "lemma": "καλέω",
+      "transliteration": "kaleseis",
+      "pronunciation": "ka-LEH-says",
+      "morphology": "verb, future active indicative, second singular",
+      "glosses": ["you will call", "you will name"],
+      "alignedEnglish": "you shall call",
+      "quickExplanation": "Joseph is commanded to name the child, publicly receiving Him into David's legal line."
+    },
+    {
+      "surface": "Ἰησοῦν",
+      "lemma": "Ἰησοῦς",
+      "transliteration": "Iesoun",
+      "pronunciation": "yay-SOON",
+      "morphology": "proper noun, accusative masculine singular",
+      "glosses": ["Jesus", "Yahweh saves"],
+      "alignedEnglish": "Jesus",
+      "quickExplanation": "The name carries the saving mission explained in the rest of the verse."
+    },
+    {
+      "surface": "σώσει",
+      "lemma": "σῴζω",
+      "transliteration": "sosei",
+      "pronunciation": "SOH-say",
+      "morphology": "verb, future active indicative, third singular",
+      "glosses": ["he will save", "rescue", "deliver"],
+      "alignedEnglish": "he will save",
+      "quickExplanation": "Matthew defines Jesus' mission as rescue from sin, not merely moral advice."
+    },
+    {
+      "surface": "λαὸν",
+      "lemma": "λαός",
+      "transliteration": "laon",
+      "pronunciation": "la-ON",
+      "morphology": "noun, accusative masculine singular",
+      "glosses": ["people", "nation"],
+      "alignedEnglish": "his people",
+      "quickExplanation": "The saving mission gathers a people who belong to Him."
+    },
+    {
+      "surface": "ἁμαρτιῶν",
+      "lemma": "ἁμαρτία",
+      "transliteration": "hamartion",
+      "pronunciation": "ha-mar-tee-OWN",
+      "morphology": "noun, genitive feminine plural",
+      "glosses": ["sins", "offenses", "acts against God"],
+      "alignedEnglish": "their sins",
+      "quickExplanation": "The plural names the problem Jesus comes to deal with: real sins before God."
+    }
+  ]
+}

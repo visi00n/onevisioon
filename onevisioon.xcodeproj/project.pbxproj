@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		15F228D1169E4F7F3E3D8D02 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 27CFC01EDC5A94196BF7C862 /* Foundation.framework */; };
+		3D311E4CCE20732617BF000E /* daily-verse-feed.json in Resources */ = {isa = PBXBuildFile; fileRef = 26BDA9672AB44D0877EB4CEB /* daily-verse-feed.json */; };
+		4A18BBEC1BC8CFFE17FC6A28 /* DailyVerseWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CB680D997312217AFBB4AD8 /* DailyVerseWidget.swift */; };
+		A0C6A42D66C6FDDDAB7877F8 /* onevisioonWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C57439DA3EF6A01CFF717F /* onevisioonWidgetsBundle.swift */; };
+		EB6D3C78A681EA3C91029C0D /* onevisioonWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 17D2E6FBDD9F3F0A88538D19 /* onevisioonWidgets.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		B4C454542F5ABA1400282297 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,9 +29,36 @@
 			remoteGlobalIDString = B4C454432F5ABA1300282297;
 			remoteInfo = onevisioon;
 		};
+		D97F46CE14E76FC05A7772DE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B4C4543C2F5ABA1300282297 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2C645A1827648ECB7935096C;
+			remoteInfo = onevisioonWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		4F9606FBF8DFB0ABC7670C6C /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				EB6D3C78A681EA3C91029C0D /* onevisioonWidgets.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		04C57439DA3EF6A01CFF717F /* onevisioonWidgetsBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = onevisioonWidgetsBundle.swift; sourceTree = "<group>"; };
+		17D2E6FBDD9F3F0A88538D19 /* onevisioonWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = onevisioonWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		26BDA9672AB44D0877EB4CEB /* daily-verse-feed.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = "daily-verse-feed.json"; sourceTree = "<group>"; };
+		27CFC01EDC5A94196BF7C862 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		2CB680D997312217AFBB4AD8 /* DailyVerseWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyVerseWidget.swift; sourceTree = "<group>"; };
+		832D1055B061E59DDDEBDAD6 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B4C454442F5ABA1300282297 /* onevisioon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = onevisioon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B4C454532F5ABA1400282297 /* onevisioonTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = onevisioonTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B4C4545D2F5ABA1400282297 /* onevisioonUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = onevisioonUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -90,9 +125,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F979FB0F14A29A2633295E06 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				15F228D1169E4F7F3E3D8D02 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		58F40145C1BA1D59055AC7AA /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				26BDA9672AB44D0877EB4CEB /* daily-verse-feed.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		6FDFF88D559699C676A60475 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				27CFC01EDC5A94196BF7C862 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		B4C4543B2F5ABA1300282297 = {
 			isa = PBXGroup;
 			children = (
@@ -100,6 +159,8 @@
 				B4C454562F5ABA1400282297 /* onevisioonTests */,
 				B4C454602F5ABA1400282297 /* onevisioonUITests */,
 				B4C454452F5ABA1300282297 /* Products */,
+				BEF34805723FD002FCE5729B /* Frameworks */,
+				FC0DEB0571D4C1A4F4B48EFC /* onevisioonWidgets */,
 			);
 			sourceTree = "<group>";
 		};
@@ -109,13 +170,50 @@
 				B4C454442F5ABA1300282297 /* onevisioon.app */,
 				B4C454532F5ABA1400282297 /* onevisioonTests.xctest */,
 				B4C4545D2F5ABA1400282297 /* onevisioonUITests.xctest */,
+				17D2E6FBDD9F3F0A88538D19 /* onevisioonWidgets.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		BEF34805723FD002FCE5729B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				6FDFF88D559699C676A60475 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		FC0DEB0571D4C1A4F4B48EFC /* onevisioonWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				04C57439DA3EF6A01CFF717F /* onevisioonWidgetsBundle.swift */,
+				2CB680D997312217AFBB4AD8 /* DailyVerseWidget.swift */,
+				832D1055B061E59DDDEBDAD6 /* Info.plist */,
+				58F40145C1BA1D59055AC7AA /* Resources */,
+			);
+			path = onevisioonWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		2C645A1827648ECB7935096C /* onevisioonWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3D2D069F2F2DCE99EA9E2AAB /* Build configuration list for PBXNativeTarget "onevisioonWidgets" */;
+			buildPhases = (
+				D8DC276BB54921F98D19B7BA /* Sources */,
+				F979FB0F14A29A2633295E06 /* Frameworks */,
+				D5A204EC4C8B1E4146E20439 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = onevisioonWidgets;
+			productName = onevisioonWidgets;
+			productReference = 17D2E6FBDD9F3F0A88538D19 /* onevisioonWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		B4C454432F5ABA1300282297 /* onevisioon */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B4C454672F5ABA1400282297 /* Build configuration list for PBXNativeTarget "onevisioon" */;
@@ -123,17 +221,17 @@
 				B4C454402F5ABA1300282297 /* Sources */,
 				B4C454412F5ABA1300282297 /* Frameworks */,
 				B4C454422F5ABA1300282297 /* Resources */,
+				4F9606FBF8DFB0ABC7670C6C /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				3F9B094C8A148E243C5665B5 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				B4C454462F5ABA1300282297 /* onevisioon */,
 			);
 			name = onevisioon;
-			packageProductDependencies = (
-			);
 			productName = onevisioon;
 			productReference = B4C454442F5ABA1300282297 /* onevisioon.app */;
 			productType = "com.apple.product-type.application";
@@ -155,8 +253,6 @@
 				B4C454562F5ABA1400282297 /* onevisioonTests */,
 			);
 			name = onevisioonTests;
-			packageProductDependencies = (
-			);
 			productName = onevisioonTests;
 			productReference = B4C454532F5ABA1400282297 /* onevisioonTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -178,8 +274,6 @@
 				B4C454602F5ABA1400282297 /* onevisioonUITests */,
 			);
 			name = onevisioonUITests;
-			packageProductDependencies = (
-			);
 			productName = onevisioonUITests;
 			productReference = B4C4545D2F5ABA1400282297 /* onevisioonUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -194,8 +288,19 @@
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
+					2C645A1827648ECB7935096C = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
 					B4C454432F5ABA1300282297 = {
 						CreatedOnToolsVersion = 26.0.1;
+						SystemCapabilities = {
+							com.apple.InAppPurchase = {
+								enabled = 1;
+							};
+							com.apple.SignInWithApple = {
+								enabled = 1;
+							};
+						};
 					};
 					B4C454522F5ABA1400282297 = {
 						CreatedOnToolsVersion = 26.0.1;
@@ -224,6 +329,7 @@
 				B4C454432F5ABA1300282297 /* onevisioon */,
 				B4C454522F5ABA1400282297 /* onevisioonTests */,
 				B4C4545C2F5ABA1400282297 /* onevisioonUITests */,
+				2C645A1827648ECB7935096C /* onevisioonWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -247,6 +353,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D5A204EC4C8B1E4146E20439 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3D311E4CCE20732617BF000E /* daily-verse-feed.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -274,9 +388,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D8DC276BB54921F98D19B7BA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0C6A42D66C6FDDDAB7877F8 /* onevisioonWidgetsBundle.swift in Sources */,
+				4A18BBEC1BC8CFFE17FC6A28 /* DailyVerseWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		3F9B094C8A148E243C5665B5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = onevisioonWidgets;
+			target = 2C645A1827648ECB7935096C /* onevisioonWidgets */;
+			targetProxy = D97F46CE14E76FC05A7772DE /* PBXContainerItemProxy */;
+		};
 		B4C454552F5ABA1400282297 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = B4C454432F5ABA1300282297 /* onevisioon */;
@@ -290,6 +419,37 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		54E924C6E96EF9C57458BC55 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MSRN67DLBY;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = onevisioonWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = vsn.onevisioon.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		B4C454652F5ABA1400282297 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -419,7 +579,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MSRN67DLBY;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AppInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "one visioon";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -453,7 +616,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MSRN67DLBY;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AppInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "one visioon";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -561,9 +727,50 @@
 			};
 			name = Release;
 		};
+		FDEC8407259855E009CFE58E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MSRN67DLBY;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = onevisioonWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = vsn.onevisioon.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		3D2D069F2F2DCE99EA9E2AAB /* Build configuration list for PBXNativeTarget "onevisioonWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FDEC8407259855E009CFE58E /* Release */,
+				54E924C6E96EF9C57458BC55 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		B4C4543F2F5ABA1300282297 /* Build configuration list for PBXProject "onevisioon" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

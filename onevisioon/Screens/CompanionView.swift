@@ -9,6 +9,7 @@ struct CourseView: View {
     @State private var showDailyCheckInForm = false
     @State private var showDailyCheckInCompletedState = false
     @State private var showStreakCalendarSheet = false
+    @State private var streakCalendarDetent: PresentationDetent = .large
     @State private var showContent = false
 
     var body: some View {
@@ -37,6 +38,7 @@ struct CourseView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
+                        streakCalendarDetent = .large
                         showStreakCalendarSheet = true
                     } label: {
                         HStack(spacing: 6) {
@@ -69,7 +71,7 @@ struct CourseView: View {
             }
             .sheet(isPresented: $showStreakCalendarSheet) {
                 StreakCalendarSheetView(store: store)
-                    .presentationDetents([.fraction(0.6), .large])
+                    .presentationDetents([.fraction(0.6), .large], selection: $streakCalendarDetent)
                     .presentationDragIndicator(.visible)
             }
             .onAppear {
@@ -858,7 +860,8 @@ struct StreakCalendarSheetView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.top, 30)
+        .padding(.bottom, 16)
         .background(OVTheme.mainBackground.ignoresSafeArea())
     }
 }
@@ -1027,7 +1030,7 @@ private struct WisdomFolderView: View {
             return "Every lesson and quest is complete."
         }
         if progress.lessonCompleted && !progress.quizPassed {
-            return "Lesson complete. Take the quest next."
+            return "Lesson complete. Pass the quest next."
         }
         if progress.quizPassed {
             return "Lesson complete. Move into the next unlocked lesson."
@@ -1320,13 +1323,32 @@ struct LessonDetailView: View {
         lesson.assessmentQuest
     }
 
+    private var lessonSourceURL: URL? {
+        guard var components = URLComponents(string: lesson.sourceURL) else { return nil }
+
+        let host = components.host?.lowercased() ?? ""
+        guard host.contains("biblegateway.com") else {
+            return components.url
+        }
+
+        var queryItems = components.queryItems ?? []
+        let versionCode = store.selectedBibleVersion.bibleGatewayCode
+        if let index = queryItems.firstIndex(where: { $0.name.lowercased() == "version" }) {
+            queryItems[index] = URLQueryItem(name: "version", value: versionCode)
+        } else {
+            queryItems.append(URLQueryItem(name: "version", value: versionCode))
+        }
+        components.queryItems = queryItems
+        return components.url
+    }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(lesson.title)
                 .font(OVTheme.heading(30))
                 .foregroundStyle(OVTheme.ink)
 
-            if let sourceURL = URL(string: lesson.sourceURL) {
+            if let sourceURL = lessonSourceURL {
                 Link(destination: sourceURL) {
                     Text("Source: \(lesson.sourceName)")
                         .font(OVTheme.body(14))
@@ -1597,7 +1619,7 @@ struct LessonDetailView: View {
                     store.markLessonCompleted(lesson)
                     startQuest = true
                 } label: {
-                    Text("Take Lesson Quest")
+                    Text("Start Lesson Quest")
                         .font(OVTheme.heading(16))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)

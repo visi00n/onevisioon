@@ -5,13 +5,15 @@ import StoreKit
 @MainActor
 final class SubscriptionAccessManager: ObservableObject {
     private var updatesTask: Task<Void, Never>?
-    private let billingPreviewMode = true
-    private let testingFullAccessMode = true
+    private let billingPreviewMode = false
+    private let testingFullAccessMode = false
+    private let promotionalOfferSignatureClient: StoreKitPromotionalOfferSignatureClient?
 
-    // Update these IDs to match App Store Connect products.
-    private let monthlyProductID = "onevisioon.premium.monthly"
-    private let yearlyProductID = "onevisioon.premium.yearly"
-    private var subscriptionProductIDs: [String] { [monthlyProductID, yearlyProductID] }
+    static let monthlyProductID = "onevisioon.premium.monthly"
+    static let yearlyProductID = "onevisioon.premium.yearly"
+    static let yearlySpecialOfferID = "onevisioon.yearly.special"
+    static let yearlySpecialPlanSelection = "yearlySpecial"
+    private var subscriptionProductIDs: [String] { [Self.monthlyProductID, Self.yearlyProductID] }
 
     @Published private(set) var products: [Product] = []
     @Published private(set) var hasActiveSubscription = false
@@ -36,11 +38,32 @@ final class SubscriptionAccessManager: ObservableObject {
     }
 
     var monthlyProduct: Product? {
-        products.first(where: { $0.id == monthlyProductID })
+        products.first(where: { $0.id == Self.monthlyProductID })
     }
 
     var yearlyProduct: Product? {
-        products.first(where: { $0.id == yearlyProductID })
+        products.first(where: { $0.id == Self.yearlyProductID })
+    }
+
+    var yearlySpecialOffer: Product.SubscriptionOffer? {
+        yearlyProduct?.subscription?.promotionalOffers.first(where: { $0.id == Self.yearlySpecialOfferID })
+    }
+
+    var shouldShowYearlySpecialOffer: Bool {
+        yearlySpecialOffer != nil && promotionalOfferSignatureClient != nil
+    }
+
+    var yearlyIntroductoryOffer: Product.SubscriptionOffer? {
+        guard let offer = yearlyProduct?.subscription?.introductoryOffer,
+              offer.paymentMode == .freeTrial else {
+            return nil
+        }
+
+        return offer
+    }
+
+    var shouldShowYearlyIntroTrialOffer: Bool {
+        yearlyIntroductoryOffer != nil
     }
 
     var trialDaysRemaining: Int {
@@ -54,6 +77,12 @@ final class SubscriptionAccessManager: ObservableObject {
     }
 
     init() {
+        if let configuration = try? SupabaseProjectConfiguration.load() {
+            promotionalOfferSignatureClient = StoreKitPromotionalOfferSignatureClient(configuration: configuration)
+        } else {
+            promotionalOfferSignatureClient = nil
+        }
+
         observeTransactionUpdates()
 
         Task {
@@ -98,7 +127,7 @@ final class SubscriptionAccessManager: ObservableObject {
         }
     }
 
-    func startMonthlyTrial() async {
+    func purchaseMonthlyPlan() async {
         guard isMembershipEnabled else {
             errorMessage = nil
             return
@@ -120,15 +149,10 @@ final class SubscriptionAccessManager: ObservableObject {
             return
         }
 
-        guard hasFreeTrialOffer(for: monthlyProduct) else {
-            errorMessage = "A free trial is not configured for the monthly plan yet."
-            return
-        }
-
         await purchase(monthlyProduct)
     }
 
-    func purchase(_ product: Product) async {
+    func purchase(_ product: Product, options: Set<Product.PurchaseOption> = []) async {
         guard isMembershipEnabled else {
             errorMessage = nil
             return
@@ -145,7 +169,7 @@ final class SubscriptionAccessManager: ObservableObject {
         defer { isPurchasing = false }
 
         do {
-            let result = try await product.purchase()
+            let result = try await product.purchase(options: options)
             switch result {
             case .success(let verification):
                 guard case .verified(let transaction) = verification else {
@@ -215,7 +239,18 @@ final class SubscriptionAccessManager: ObservableObject {
 
         errorMessage = nil
 
+        if plan == Self.yearlySpecialPlanSelection {
+            return await purchaseYearlySpecialOffer()
+        }
+
         if products.isEmpty {
+            await loadProducts()
+        }
+
+        // TestFlight/Sandbox can occasionally return no products on first load.
+        // One sync + reload pass helps recover without requiring app restart.
+        if products.isEmpty {
+            try? await AppStore.sync()
             await loadProducts()
         }
 
@@ -228,12 +263,67 @@ final class SubscriptionAccessManager: ObservableObject {
         }
 
         guard let product else {
-            errorMessage = "Bible School plans are unavailable right now. Double-check the product IDs in App Store Connect."
+            if products.isEmpty {
+                errorMessage = "Bible School plans are unavailable right now. Confirm the subscription products are available in App Store Connect and try again in a minute."
+            } else {
+                errorMessage = "Bible School plans are unavailable right now. Double-check the product IDs in App Store Connect."
+            }
             return false
         }
 
         await purchase(product)
         return hasAccess
+    }
+
+    func purchaseYearlySpecialOffer() async -> Bool {
+        guard isMembershipEnabled else {
+            errorMessage = nil
+            return true
+        }
+
+        guard !billingPreviewMode else {
+            errorMessage = "Billing is disabled in preview mode."
+            return false
+        }
+
+        errorMessage = nil
+
+        if products.isEmpty {
+            await loadProducts()
+        }
+
+        if products.isEmpty {
+            try? await AppStore.sync()
+            await loadProducts()
+        }
+
+        guard let yearlyProduct else {
+            errorMessage = "Yearly plan is unavailable. Confirm `\(Self.yearlyProductID)` is active in App Store Connect."
+            return false
+        }
+
+        guard yearlySpecialOffer != nil else {
+            errorMessage = "The special yearly offer is not available from Apple yet. Confirm `\(Self.yearlySpecialOfferID)` is active under the yearly subscription."
+            return false
+        }
+
+        guard let promotionalOfferSignatureClient else {
+            errorMessage = "The special yearly offer needs the secure Supabase signing endpoint before it can be purchased."
+            return false
+        }
+
+        do {
+            let compactJWS = try await promotionalOfferSignatureClient.compactJWS(
+                productID: Self.yearlyProductID,
+                offerID: Self.yearlySpecialOfferID
+            )
+            let options = Set(Product.PurchaseOption.promotionalOffer(Self.yearlySpecialOfferID, compactJWS: compactJWS))
+            await purchase(yearlyProduct, options: options)
+            return hasAccess
+        } catch {
+            errorMessage = "The special yearly offer could not be prepared. Try again soon or choose the regular yearly plan."
+            return false
+        }
     }
 
     private func refreshEntitlements() async {
@@ -271,8 +361,8 @@ final class SubscriptionAccessManager: ObservableObject {
     }
 
     private func productSortRank(for id: String) -> Int {
-        if id == monthlyProductID { return 0 }
-        if id == yearlyProductID { return 1 }
+        if id == Self.monthlyProductID { return 0 }
+        if id == Self.yearlyProductID { return 1 }
         return 99
     }
 }

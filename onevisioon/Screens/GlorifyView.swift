@@ -6,40 +6,14 @@ enum GlorifyRoute: Hashable {
     case discoverGifts
 }
 
-private struct GlorifyWay: Identifiable {
-    let title: String
-    let detail: String
-    let practice: String
-    let reference: String
-    let symbol: String
-    let accent: Color
-
-    var id: String { title }
+private enum GlorifyScrollAnchor: Hashable {
+    case discoverGifts
 }
 
-private struct GlorifyPrompt: Identifiable {
-    let title: String
-    let detail: String
-    let reference: String
-
-    var id: String { title }
-}
-
-private struct GiftLane: Identifiable {
-    let title: String
-    let detail: String
-    let application: String
-    let reference: String
-    let symbol: String
-    let accent: Color
-
-    var id: String { title }
-}
-
-private struct WeeklyCreativeDay: Identifiable {
+private struct WeeklyGiftDay: Identifiable {
     let id = UUID()
     let date: Date
-    let checkIn: CreativeCheckIn
+    let checkIn: GiftTrainingCheckIn
 }
 
 private struct CreationComposerImage: Identifiable {
@@ -50,143 +24,150 @@ private struct CreationComposerImage: Identifiable {
 
 struct GlorifyView: View {
     @ObservedObject var store: SoulJourneyStore
-    @ObservedObject var accessManager: SubscriptionAccessManager
     @Binding var jumpTarget: GlorifyRoute?
 
     @State private var scriptureTarget: BibleReferenceTarget?
-    @State private var showSchoolPreview = false
+    @State private var isTakingGiftQuiz = false
+    @State private var isShowingGiftQuizIntro = false
+    @State private var showGiftQuizResults = false
+    @State private var currentGiftQuestionIndex = 0
+    @State private var giftQuizQuestions: [GiftDiscoveryQuestion] = GiftDiscoveryCatalog.questions
+    @State private var giftQuizAdaptiveAnchorMap: [String: String] = [:]
+    @State private var giftQuizAnswers: [String: String] = [:]
+    @State private var expandedGiftResultSections: Set<String> = []
+    @State private var expandedGiftPathSections: Set<String> = []
+    @State private var giftReflectionDraft = ""
+    @State private var isEnablingMorningReminders = false
+    @State private var morningReminderStatus: String?
+    @FocusState private var giftReflectionFocused: Bool
 
-    private let ways: [GlorifyWay] = [
-        GlorifyWay(
-            title: "Worship through what you make",
-            detail: "Your creativity does not have to be separate from your faith. It can become worship when it is offered back to God.",
-            practice: "Before you create, pray over the work and give the result to Jesus.",
-            reference: "Colossians 3:17",
-            symbol: "hands.sparkles",
-            accent: OVTheme.lemon.opacity(0.46)
-        ),
-        GlorifyWay(
-            title: "Reflect truth beautifully",
-            detail: "The world does not only need louder content. It needs truth carried with beauty, clarity, peace, and conviction.",
-            practice: "Create one piece that makes Christ more visible than yourself.",
-            reference: "Matthew 5:16",
-            symbol: "sparkles",
-            accent: OVTheme.sky.opacity(0.62)
-        ),
-        GlorifyWay(
-            title: "Use your gifts with discipline",
-            detail: "God-given creativity grows when it is practiced faithfully instead of waiting on perfect moods or perfect timing.",
-            practice: "Finish one small thing today, even if it is unfinished in your eyes.",
-            reference: "Ecclesiastes 9:10",
-            symbol: "paintbrush.pointed",
-            accent: OVTheme.mint.opacity(0.72)
-        ),
-        GlorifyWay(
-            title: "Share light with people",
-            detail: "What you write, sing, design, film, or paint can comfort, convict, encourage, and point people back to Jesus.",
-            practice: "Share one truth-filled creation or encouragement with someone today.",
-            reference: "1 Peter 4:10",
-            symbol: "sun.max",
-            accent: OVTheme.orchid.opacity(0.66)
-        )
-    ]
-
-    private let prompts: [GlorifyPrompt] = [
-        GlorifyPrompt(
-            title: "Write one honest line of worship",
-            detail: "Do not chase a full song first. Start with one line that is true about God.",
-            reference: "Psalms 96:1"
-        ),
-        GlorifyPrompt(
-            title: "Make something small but real",
-            detail: "A rough draft made in faith is better than another day of not starting.",
-            reference: "Zechariah 4:10"
-        ),
-        GlorifyPrompt(
-            title: "Turn a verse into a visual",
-            detail: "Sketch, design, film, or style something that helps Scripture stay visible.",
-            reference: "Habakkuk 2:2"
-        ),
-        GlorifyPrompt(
-            title: "Encourage one person creatively",
-            detail: "Send something thoughtful that carries peace, hope, or biblical truth.",
-            reference: "Hebrews 10:24"
-        )
-    ]
-
-    private let giftLanes: [GiftLane] = [
-        GiftLane(
-            title: "Creative skill",
-            detail: "God can fill people with skill, wisdom, and craftsmanship for work that reflects His beauty and order.",
-            application: "Build, design, write, compose, or shape something with excellence and humility.",
-            reference: "Exodus 31:3-5",
-            symbol: "paintpalette",
-            accent: OVTheme.lemon.opacity(0.48)
-        ),
-        GiftLane(
-            title: "Encouragement and mercy",
-            detail: "Some gifts strengthen tired people, restore hope, and make God's kindness feel visible.",
-            application: "Use your words and presence to steady someone instead of only impressing them.",
-            reference: "Romans 12:8",
-            symbol: "heart.text.square",
-            accent: OVTheme.orchid.opacity(0.68)
-        ),
-        GiftLane(
-            title: "Service and faithfulness",
-            detail: "Not every gift is loud. Many are seen in steady service, care, and hidden faithfulness.",
-            application: "Turn your reliability into ministry instead of treating it like a small thing.",
-            reference: "1 Peter 4:10",
-            symbol: "hands.sparkles",
-            accent: OVTheme.mint.opacity(0.72)
-        ),
-        GiftLane(
-            title: "Teaching and clarity",
-            detail: "Some gifts help people understand truth, connect Scripture, and walk away with clearer conviction.",
-            application: "Explain God's Word clearly, patiently, and in a way that leads people toward obedience.",
-            reference: "Romans 12:6-7",
-            symbol: "book.pages",
-            accent: OVTheme.sky.opacity(0.6)
-        )
-    ]
-
-    private var isBibleSchoolCreatorSpaceUnlocked: Bool {
-        store.onboardingProfile.selectedVersion == "premium" || accessManager.hasActiveSubscription
+    private var todayGiftCheckIn: GiftTrainingCheckIn {
+        store.giftTrainingCheckIn()
     }
 
-    private var todayCheckIn: CreativeCheckIn {
-        store.creativeCheckIn()
-    }
-
-    private var weeklyDays: [WeeklyCreativeDay] {
+    private var weeklyGiftDays: [WeeklyGiftDay] {
         let calendar = Calendar.current
         return (0..<7).compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: -(6 - offset), to: .now) else {
                 return nil
             }
-            return WeeklyCreativeDay(date: date, checkIn: store.creativeCheckIn(for: date))
+            return WeeklyGiftDay(date: date, checkIn: store.giftTrainingCheckIn(for: date))
         }
     }
 
-    private var todaysPrompt: GlorifyPrompt {
-        let day = Calendar.current.ordinality(of: .day, in: .year, for: .now) ?? 1
-        return prompts[(day - 1) % prompts.count]
+    private var hasGiftProfile: Bool {
+        store.giftDiscoveryProfile != nil
+    }
+
+    private var discoveredGifts: [SpiritualGiftKind] {
+        let top = store.discoveredGiftKinds
+        return top.isEmpty ? Array(SpiritualGiftKind.allCases.prefix(2)) : top
+    }
+
+    private var currentGiftQuestion: GiftDiscoveryQuestion {
+        if giftQuizQuestions.indices.contains(currentGiftQuestionIndex) {
+            return giftQuizQuestions[currentGiftQuestionIndex]
+        }
+        return giftQuizQuestions.first ?? GiftDiscoveryCatalog.questions[0]
+    }
+
+    private var giftQuizQuestionTotal: Int {
+        max(1, giftQuizQuestions.count)
+    }
+
+    private var completedGiftQuestionCount: Int {
+        store.giftDiscoveryProfile?.answers.count ?? GiftDiscoveryCatalog.questions.count
+    }
+
+    private var todayMorningQuote: GlorifyMorningQuote {
+        GiftDiscoveryCatalog.morningQuote()
+    }
+
+    private var dailyGiftFocus: GiftDailyFocus? {
+        guard let profile = store.giftDiscoveryProfile else { return nil }
+        return GiftDiscoveryCatalog.todayFocus(
+            for: profile,
+            progressDays: store.giftTrainingCompletedDayCount
+        )
     }
 
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        heroCard
-                        dailyPromptCard
-                        creativeRhythmSection
-                        giftsSection
-                        creatorFeedSection
-                        waysSection
-                        galleryVisionCard
+                    LazyVStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
+                        Color.clear
+                            .frame(height: 0)
+                            .id(GlorifyScrollAnchor.discoverGifts)
+
+                        if hasGiftProfile && !isTakingGiftQuiz {
+                            if showGiftQuizResults {
+                                giftQuizResultsHeroCard
+                                giftResultAccordionSection(
+                                    id: "guided-plan",
+                                    title: "Guided plan",
+                                    subtitle: "Daily focus, habits, Scripture, and reflection.",
+                                    systemImage: "map.fill"
+                                ) {
+                                    giftQuizResultsPlanCard
+                                }
+                                giftResultAccordionSection(
+                                    id: "morning-truth",
+                                    title: "Morning truth",
+                                    subtitle: "Optional reminders to start the day with God.",
+                                    systemImage: "bell.badge.fill"
+                                ) {
+                                    giftQuizReminderCard
+                                }
+                                giftQuizResultsContinueCard
+                                retakeQuizButton
+                            } else {
+                                giftGrowthHeroCard
+                                if let dailyGiftFocus {
+                                    giftPathAccordionSection(
+                                        id: "today-focus",
+                                        title: "Today's focus",
+                                        subtitle: "Open today's action, prayer, and Scripture.",
+                                        systemImage: "target"
+                                    ) {
+                                        todayGiftFocusCard(dailyGiftFocus)
+                                    }
+                                }
+                                giftPathAccordionSection(
+                                    id: "daily-training",
+                                    title: "Daily gift training",
+                                    subtitle: "Clock in and check off the habits that matter today.",
+                                    systemImage: "checkmark.circle.fill"
+                                ) {
+                                    giftTrackerSection
+                                }
+                                if todayGiftCheckIn.reflection.trimmed.isEmpty {
+                                    giftPathAccordionSection(
+                                        id: "gift-reflection",
+                                        title: "Gift reflection",
+                                        subtitle: "Write what you practiced and where God stretched you.",
+                                        systemImage: "square.and.pencil"
+                                    ) {
+                                        giftReflectionSection
+                                    }
+                                }
+                                retakeQuizButton
+                            }
+                        } else if isTakingGiftQuiz {
+                            giftQuizHeroCard
+                            if isShowingGiftQuizIntro {
+                                giftQuizIntroSlideCard
+                            } else {
+                                giftQuizQuestionCard
+                            }
+                        } else {
+                            giftDiscoveryHeroCard
+                            giftDiscoveryValueCard
+                            giftDiscoveryStartCard
+                        }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
+                    .padding(.horizontal, OVTheme.screenHorizontalPadding)
+                    .padding(.vertical, OVTheme.screenVerticalPadding)
                 }
                 .background(OVTheme.mainBackground.ignoresSafeArea())
                 .navigationTitle("Glorify")
@@ -194,42 +175,67 @@ struct GlorifyView: View {
                 .navigationDestination(item: $scriptureTarget) { target in
                     BibleChapterReaderView(store: store, target: target)
                 }
-                .sheet(isPresented: $showSchoolPreview) {
-                    GlorifySchoolPreviewView()
-                }
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         AppInfoButton()
                     }
                 }
                 .onAppear {
+                    giftReflectionDraft = store.giftTrainingCheckIn().reflection
                     handleJumpRequest(with: proxy)
+                }
+                .task(id: store.glorifyReminderSettings) {
+                    await GlorifyReminderService.refreshMorningQuotesIfNeeded(using: store.glorifyReminderSettings)
                 }
                 .onChange(of: jumpTarget) { _, _ in
                     handleJumpRequest(with: proxy)
+                }
+                .onChange(of: currentGiftQuestionIndex) { _, _ in
+                    guard isTakingGiftQuiz else { return }
+                    withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                        proxy.scrollTo(GlorifyScrollAnchor.discoverGifts, anchor: .top)
+                    }
                 }
             }
         }
     }
 
-    private var heroCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Glorify God with your creation")
-                .font(OVTheme.display(34))
-                .foregroundStyle(OVTheme.midnight)
+    private var giftDiscoveryHeroCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(OVTheme.lemon.opacity(0.52))
+                        .frame(width: 58, height: 58)
 
-            Text("A creative rhythm that helps you worship, make, refine, and share what God has placed in you.")
-                .font(OVTheme.body(15))
+                    Image(systemName: "sparkles.rectangle.stack.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(OVTheme.midnight)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Gift discovery")
+                        .font(OVTheme.body(11))
+                        .foregroundStyle(OVTheme.gold)
+
+                    Text("Glorify God with the way He wired you")
+                        .font(OVTheme.display(30))
+                        .foregroundStyle(OVTheme.midnight)
+                }
+            }
+
+            Text("Take the quiz once, then let One Visioon guide you with daily habits, Scripture, and clear next steps for how your gifts grow.")
+                .font(OVTheme.body(14))
                 .foregroundStyle(OVTheme.ink.opacity(0.76))
 
             HStack(spacing: 8) {
-                topChip("Free rhythm")
-                topChip("Safe space")
-                topChip(isBibleSchoolCreatorSpaceUnlocked ? "Creator feed on" : "Bible School feed")
+                topChip("\(GiftDiscoveryCatalog.questions.count)+ adaptive profile")
+                topChip("Daily training")
+                topChip("Real habits")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22)
+        .padding(OVTheme.cardPadding)
         .background(
             LinearGradient(
                 colors: [OVTheme.lemon.opacity(0.32), .white, OVTheme.mist.opacity(0.54)],
@@ -240,66 +246,611 @@ struct GlorifyView: View {
         .glorifyCard()
     }
 
-    private var dailyPromptCard: some View {
+    private var giftDiscoveryValueCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("What this gives you")
+                .font(OVTheme.heading(22))
+                .foregroundStyle(OVTheme.ink)
+
+            VStack(alignment: .leading, spacing: 10) {
+                previewBullet("A likely primary gift and support gift based on your answers")
+                previewBullet("A daily focus that helps you use those gifts in real life")
+                previewBullet("A habit tracker built around how each gift actually grows")
+                previewBullet("Simple reflection so growth becomes visible over time")
+            }
+        }
+        .padding(OVTheme.cardPadding)
+        .glorifyCard()
+    }
+
+    private var giftDiscoveryStartCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Start gift discovery")
+                .font(OVTheme.heading(22))
+                .foregroundStyle(OVTheme.ink)
+
+            Text("Answer honestly. The goal is to see how God may already be shaping you, then train that gift day by day.")
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.72))
+
+            Button {
+                startGiftQuiz()
+            } label: {
+                Text("Take the quiz")
+                    .font(OVTheme.heading(15))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(OVTheme.midnight)
+                    .clipShape(Capsule())
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("glorify.takeQuizButton")
+        }
+        .padding(OVTheme.cardPadding)
+        .glorifyCard()
+    }
+
+    private var giftQuizHeroCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Today's creative prompt")
-                        .font(OVTheme.heading(22))
-                        .foregroundStyle(OVTheme.ink)
-                    Text("Start small, stay honest, and make something with God in view.")
-                        .font(OVTheme.body(14))
-                        .foregroundStyle(OVTheme.ink.opacity(0.72))
-                }
-                Spacer()
-                Text("Daily")
-                    .font(OVTheme.body(11))
+                Text("Gift quiz")
+                    .font(OVTheme.body(12))
                     .foregroundStyle(OVTheme.midnight)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(OVTheme.smoke)
                     .clipShape(Capsule())
+
+                Spacer()
+
+                Text(isShowingGiftQuizIntro ? "Before question 1" : "Question \(currentGiftQuestionIndex + 1) of \(giftQuizQuestionTotal)")
+                    .font(OVTheme.body(12))
+                    .foregroundStyle(OVTheme.ink.opacity(0.7))
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(todaysPrompt.title)
-                    .font(OVTheme.heading(18))
-                    .foregroundStyle(OVTheme.midnight)
-
-                Text(todaysPrompt.detail)
-                    .font(OVTheme.body(15))
-                    .foregroundStyle(OVTheme.ink.opacity(0.74))
-            }
-
-            Button {
-                scriptureTarget = BibleDataProvider.resolveReference(from: todaysPrompt.reference)
-            } label: {
-                HStack(spacing: 8) {
-                    Text(todaysPrompt.reference)
-                        .font(OVTheme.heading(14))
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 11, weight: .bold))
-                }
+            Text(isShowingGiftQuizIntro ? "Know what this will do" : "Discover how God may have wired you")
+                .font(OVTheme.display(30))
                 .foregroundStyle(OVTheme.midnight)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 11)
-                .background(OVTheme.sky.opacity(0.56))
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
+
+            Text(isShowingGiftQuizIntro ? "A quick summary first, then the questions start." : "Pick the answer that feels most like you most of the time. There is no perfect answer here.")
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.72))
+
+            ProgressView(
+                value: isShowingGiftQuizIntro ? 0 : Double(currentGiftQuestionIndex + 1),
+                total: Double(giftQuizQuestionTotal)
+            )
+                .tint(OVTheme.gold)
         }
-        .padding(20)
+        .padding(OVTheme.cardPadding)
         .glorifyCard()
     }
 
-    private var creativeRhythmSection: some View {
+    private var giftQuizIntroSlideCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Before you answer")
+                .font(OVTheme.heading(24))
+                .foregroundStyle(OVTheme.midnight)
+
+            Text("This discovery will turn your answers into a simple gift path: your likely primary gift, your support gift, the growth edge to watch, and a daily training rhythm you can actually follow.")
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.74))
+
+            VStack(alignment: .leading, spacing: 10) {
+                previewBullet("You answer \(GiftDiscoveryCatalog.questions.count) core questions plus adaptive follow-ups")
+                previewBullet("One Visioon summarizes the gifts that show up strongest")
+                previewBullet("After the quiz, the next sections stay collapsed until you open them")
+            }
+
+            detailBox(
+                title: "How to answer",
+                text: "Choose what is true most often, not what sounds most spiritual. Honest answers make the path more useful.",
+                tint: OVTheme.lemon.opacity(0.18)
+            )
+
+            Button {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                    isShowingGiftQuizIntro = false
+                }
+            } label: {
+                Text("Start the questions")
+                    .font(OVTheme.heading(15))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(OVTheme.midnight)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("glorify.startGiftQuestionsButton")
+        }
+        .padding(OVTheme.cardPadding)
+        .glorifyCard()
+    }
+
+    private var giftQuizQuestionCard: some View {
+        VStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(currentGiftQuestion.prompt)
+                    .font(OVTheme.heading(24))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Text(currentGiftQuestion.detail)
+                    .font(OVTheme.body(14))
+                    .foregroundStyle(OVTheme.ink.opacity(0.72))
+
+                VStack(spacing: 10) {
+                    ForEach(currentGiftQuestion.options) { option in
+                        giftQuizOptionRow(option)
+                    }
+                }
+
+                Button {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                        if currentGiftQuestionIndex == 0 {
+                            isShowingGiftQuizIntro = true
+                        } else {
+                            currentGiftQuestionIndex -= 1
+                        }
+                    }
+                } label: {
+                    Text(currentGiftQuestionIndex == 0 ? "Back to summary" : "Back")
+                        .font(OVTheme.heading(14))
+                        .foregroundStyle(OVTheme.midnight)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(OVTheme.paper)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .id(currentGiftQuestion.id)
+        }
+        .padding(OVTheme.cardPadding)
+        .glorifyCard()
+    }
+
+    private var giftQuizResultsHeroCard: some View {
+        let profile = store.giftDiscoveryProfile
+        let primary = profile?.primaryGift
+        let secondary = profile?.secondaryGift
+        let need = profile?.primaryNeed
+
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(primary.map { giftAccent($0) } ?? OVTheme.lemon.opacity(0.34))
+                        .frame(width: 58, height: 58)
+
+                    Image(systemName: primary?.symbol ?? "sparkles")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(OVTheme.midnight)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your Glorify result")
+                        .font(OVTheme.body(11))
+                        .foregroundStyle(OVTheme.gold)
+
+                    Text(profile?.resultHeadline ?? "Your gift path")
+                        .font(OVTheme.display(30))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text(profile?.resultSummary ?? "One Visioon will now guide you with a daily path.")
+                        .font(OVTheme.body(14))
+                        .foregroundStyle(OVTheme.ink.opacity(0.76))
+                }
+            }
+
+            HStack(spacing: 8) {
+                if let primary {
+                    topChip("Primary: \(primary.title)")
+                }
+                if let secondary {
+                    topChip("Support: \(secondary.title)")
+                }
+                if let need {
+                    topChip("Growth edge: \(need.title)")
+                }
+            }
+
+            HStack(spacing: 10) {
+                heroMetricTile("Questions", "\(completedGiftQuestionCount)")
+                heroMetricTile("Confidence", profile?.confidenceLabel ?? "Fit")
+                heroMetricTile("Next", "Daily training")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .background(
+            LinearGradient(
+                colors: [OVTheme.lemon.opacity(0.32), .white, OVTheme.mist.opacity(0.54)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .glorifyCard()
+    }
+
+    private var giftQuizResultsPlanCard: some View {
+        let profile = store.giftDiscoveryProfile
+        let primary = profile?.primaryGift
+        let need = profile?.primaryNeed
+
+        return VStack(alignment: .leading, spacing: 14) {
+            Text("How One Visioon will guide you")
+                .font(OVTheme.heading(22))
+                .foregroundStyle(OVTheme.ink)
+
+            Text(profile?.trainingSummary ?? "The app will now guide you with a daily path built around your answers.")
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.74))
+
+            VStack(alignment: .leading, spacing: 10) {
+                previewBullet("A daily focus built around \(primary?.title.lowercased() ?? "your strongest gift")")
+                previewBullet("A simple clock-in rhythm so you keep showing up")
+                previewBullet("Habit check-offs based on how this gift actually grows")
+                previewBullet(need?.shortSummary ?? "Reflection so your growth becomes visible over time")
+            }
+
+            if let need {
+                detailBox(
+                    title: "Main growth edge",
+                    text: need.shortSummary,
+                    tint: OVTheme.sky.opacity(0.2)
+                )
+            }
+        }
+        .padding(OVTheme.cardPadding)
+        .glorifyCard()
+    }
+
+    private var giftQuizReminderCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Wake up with truth")
+                .font(OVTheme.heading(22))
+                .foregroundStyle(OVTheme.ink)
+
+            Text("If you allow it, One Visioon will send one morning inspiration each day so you remember to open the app, clock in, and walk with God on purpose.")
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.74))
+
+            detailBox(
+                title: "Morning example",
+                text: "\(todayMorningQuote.text) • \(todayMorningQuote.reference)",
+                tint: OVTheme.lemon.opacity(0.18)
+            )
+
+            if store.glorifyReminderSettings?.isEnabled == true {
+                HStack(spacing: 10) {
+                    Image(systemName: "bell.badge.fill")
+                        .foregroundStyle(OVTheme.gold)
+                    Text("Morning inspiration is on.")
+                        .font(OVTheme.heading(14))
+                        .foregroundStyle(OVTheme.midnight)
+                }
+            } else {
+                Button {
+                    enableMorningReminders()
+                } label: {
+                    HStack {
+                        if isEnablingMorningReminders {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("Turn on morning reminders")
+                                .font(OVTheme.heading(15))
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(OVTheme.midnight)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(isEnablingMorningReminders)
+            }
+
+            if let morningReminderStatus {
+                Text(morningReminderStatus)
+                    .font(OVTheme.body(12))
+                    .foregroundStyle(OVTheme.ink.opacity(0.7))
+            }
+        }
+        .padding(OVTheme.cardPadding)
+        .glorifyCard()
+    }
+
+    private var giftQuizResultsContinueCard: some View {
+        VStack(spacing: 10) {
+            Button {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                    showGiftQuizResults = false
+                    expandedGiftPathSections = []
+                }
+            } label: {
+                Text("Start my daily path")
+                    .font(OVTheme.heading(15))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(OVTheme.midnight)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                    showGiftQuizResults = false
+                    expandedGiftPathSections = []
+                }
+            } label: {
+                Text("Skip for now")
+                    .font(OVTheme.body(13))
+                    .foregroundStyle(OVTheme.ink.opacity(0.68))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(OVTheme.cardPadding)
+        .glorifyCard()
+    }
+
+    private var retakeQuizButton: some View {
+        Button {
+            startGiftQuiz()
+        } label: {
+            Text("Retake gift quiz")
+                .font(OVTheme.body(13))
+                .foregroundStyle(OVTheme.ink.opacity(0.74))
+                .underline()
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func giftQuizOptionRow(_ option: GiftDiscoveryOption) -> some View {
+        Button {
+            selectGiftQuizOption(option.id)
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(option.title)
+                    .font(OVTheme.heading(16))
+                    .foregroundStyle(OVTheme.ink)
+                    .multilineTextAlignment(.leading)
+
+                Text(option.detail)
+                    .font(OVTheme.body(13))
+                    .foregroundStyle(OVTheme.ink.opacity(0.68))
+                    .multilineTextAlignment(.leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .glorifyCard(cornerRadius: 20, fill: OVTheme.elevatedCard)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var giftGrowthHeroCard: some View {
+        let primaryGift = discoveredGifts.first
+        let secondaryGift = discoveredGifts.dropFirst().first
+
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 14) {
+                if let primaryGift {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(giftAccent(primaryGift))
+                            .frame(width: 58, height: 58)
+
+                        Image(systemName: primaryGift.symbol)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(OVTheme.midnight)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your gift path")
+                        .font(OVTheme.body(11))
+                        .foregroundStyle(OVTheme.gold)
+
+                    if let primaryGift {
+                        Text(primaryGift.title)
+                            .font(OVTheme.display(30))
+                            .foregroundStyle(OVTheme.midnight)
+
+                        Text(primaryGift.shortSummary)
+                            .font(OVTheme.body(14))
+                            .foregroundStyle(OVTheme.ink.opacity(0.76))
+                    }
+                }
+            }
+
+            HStack(spacing: 8) {
+                if let primaryGift {
+                    topChip("Primary: \(primaryGift.title)")
+                }
+                if let secondaryGift {
+                    topChip("Support: \(secondaryGift.title)")
+                }
+                topChip("\(store.giftTrainingStreak) day streak")
+            }
+
+            HStack(spacing: 10) {
+                heroMetricTile("Days trained", "\(store.giftTrainingCompletedDayCount)")
+                heroMetricTile("Habits today", "\(todayGiftCheckIn.completedCount)")
+                heroMetricTile("Clocked in", store.hasGiftClockedInToday ? "Yes" : "Not yet")
+            }
+
+            detailBox(
+                title: "Morning inspiration",
+                text: "\(todayMorningQuote.text) • \(todayMorningQuote.reference)",
+                tint: OVTheme.sky.opacity(0.2)
+            )
+
+            if store.glorifyReminderSettings?.isEnabled != true {
+                Button {
+                    enableMorningReminders()
+                } label: {
+                    HStack {
+                        Text("Turn on morning inspiration")
+                            .font(OVTheme.heading(14))
+                            .foregroundStyle(.white)
+                        Spacer()
+                        Image(systemName: "bell.fill")
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 13)
+                    .background(OVTheme.midnight)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(isEnablingMorningReminders)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(OVTheme.cardPadding)
+        .background(
+            LinearGradient(
+                colors: [OVTheme.lemon.opacity(0.32), .white, OVTheme.mist.opacity(0.54)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .glorifyCard()
+    }
+
+    private func todayGiftFocusCard(_ focus: GiftDailyFocus) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(giftAccent(focus.gift))
+                        .frame(width: 50, height: 50)
+
+                    Image(systemName: focus.gift.symbol)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(OVTheme.midnight)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Today's focus")
+                        .font(OVTheme.heading(20))
+                        .foregroundStyle(OVTheme.ink)
+                    Text("\(focus.gift.title) • Step \(focus.dayNumber) of \(focus.totalSteps)")
+                        .font(OVTheme.body(12))
+                        .foregroundStyle(OVTheme.gold)
+                }
+
+                Spacer()
+
+                Button {
+                    scriptureTarget = BibleDataProvider.resolveReference(from: focus.reference)
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(focus.reference)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .font(OVTheme.body(12))
+                    .foregroundStyle(OVTheme.midnight)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(giftAccent(focus.gift))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            ProgressView(value: Double(focus.dayNumber), total: Double(max(focus.totalSteps, focus.dayNumber)))
+                .tint(OVTheme.gold)
+
+            if store.hasGiftClockedInToday {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(OVTheme.gold)
+                    Text("You already clocked in today.")
+                        .font(OVTheme.heading(14))
+                        .foregroundStyle(OVTheme.midnight)
+                }
+            } else {
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                        store.clockInToGiftTraining()
+                    }
+                } label: {
+                    HStack {
+                        Text("Clock in for today")
+                            .font(OVTheme.heading(15))
+                        Spacer()
+                        Image(systemName: "checkmark.circle")
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 13)
+                    .background(OVTheme.midnight)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(focus.title)
+                    .font(OVTheme.heading(18))
+                    .foregroundStyle(OVTheme.midnight)
+
+                Text(focus.detail)
+                    .font(OVTheme.body(14))
+                    .foregroundStyle(OVTheme.ink.opacity(0.74))
+
+                detailBox(
+                    title: "Why this matters",
+                    text: focus.whyItMatters,
+                    tint: OVTheme.lemon.opacity(0.18)
+                )
+
+                detailBox(
+                    title: "Today's action",
+                    text: focus.actionStep,
+                    tint: giftAccent(focus.gift).opacity(0.48)
+                )
+
+                detailBox(
+                    title: "Prayer",
+                    text: focus.gift.dailyPrayer,
+                    tint: OVTheme.sky.opacity(0.2)
+                )
+
+                detailBox(
+                    title: "Morning inspiration",
+                    text: "\(todayMorningQuote.text) • \(todayMorningQuote.reference)",
+                    tint: OVTheme.orchid.opacity(0.16)
+                )
+            }
+
+            Text("Reflect later: \(focus.reflectionPrompt)")
+                .font(OVTheme.body(13))
+                .foregroundStyle(OVTheme.ink.opacity(0.68))
+        }
+        .padding(OVTheme.cardPadding)
+        .glorifyCard()
+    }
+
+    private var giftTrackerSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Creative rhythm")
+                    Text("Daily gift training")
                         .font(OVTheme.heading(22))
                         .foregroundStyle(OVTheme.ink)
-                    Text("Free daily habits that help creativity feel holy and consistent again.")
+                    Text("Clock in, work the focus, and check off habits that help your gifts become useful in real life.")
                         .font(OVTheme.body(14))
                         .foregroundStyle(OVTheme.ink.opacity(0.72))
                 }
@@ -307,28 +858,29 @@ struct GlorifyView: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(store.creativeStreak)")
-                        .font(OVTheme.display(30))
+                    Text("\(todayGiftCheckIn.completedCount)")
+                        .font(OVTheme.display(28))
                         .foregroundStyle(OVTheme.midnight)
-                    Text("day streak")
+                    Text("done today")
                         .font(OVTheme.body(12))
                         .foregroundStyle(OVTheme.ink.opacity(0.66))
                 }
             }
 
-            weeklyTracker
+            weeklyGiftTracker
 
-            VStack(spacing: 10) {
-                ForEach(CreativeHabit.allCases) { habit in
-                    creativeHabitRow(habit)
+            VStack(spacing: 12) {
+                ForEach(discoveredGifts.prefix(2), id: \.id) { gift in
+                    giftHabitCard(gift)
                 }
             }
         }
+        .padding(.top, 2)
     }
 
-    private var weeklyTracker: some View {
+    private var weeklyGiftTracker: some View {
         HStack(spacing: 8) {
-            ForEach(weeklyDays) { day in
+            ForEach(weeklyGiftDays) { day in
                 VStack(spacing: 8) {
                     Text(shortWeekday(day.date))
                         .font(OVTheme.body(11))
@@ -353,281 +905,368 @@ struct GlorifyView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .padding(16)
-        .glorifyCard(cornerRadius: 22, fill: OVTheme.elevatedCard)
+        .padding(14)
+        .glorifyCard(cornerRadius: 20, fill: OVTheme.elevatedCard)
     }
 
-    private func creativeHabitRow(_ habit: CreativeHabit) -> some View {
-        let isDone = todayCheckIn.completedHabits.contains(habit)
-
-        return Button {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                store.toggleCreativeHabit(habit)
-            }
-        } label: {
-            HStack(spacing: 14) {
+    private func giftHabitCard(_ gift: SpiritualGiftKind) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(habitAccent(habit))
-                        .frame(width: 48, height: 48)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(giftAccent(gift))
+                        .frame(width: 50, height: 50)
 
-                    Image(systemName: habit.symbol)
+                    Image(systemName: gift.symbol)
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(OVTheme.midnight)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(habit.title)
-                        .font(OVTheme.heading(16))
+                    Text(gift.title)
+                        .font(OVTheme.heading(18))
                         .foregroundStyle(OVTheme.ink)
 
-                    Text(habit.detail)
-                        .font(OVTheme.body(13))
-                        .foregroundStyle(OVTheme.ink.opacity(0.68))
-                        .multilineTextAlignment(.leading)
+                    Text(gift.growthLine)
+                        .font(OVTheme.body(14))
+                        .foregroundStyle(OVTheme.ink.opacity(0.72))
                 }
 
                 Spacer()
-
-                ZStack {
-                    Circle()
-                        .fill(isDone ? OVTheme.midnight : .white)
-                        .frame(width: 28, height: 28)
-                        .overlay(
-                            Circle()
-                                .stroke(isDone ? OVTheme.midnight : OVTheme.line, lineWidth: 1)
-                        )
-
-                    if isDone {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                }
             }
-            .padding(16)
-            .glorifyCard(cornerRadius: 22, fill: isDone ? OVTheme.paper : OVTheme.cardBackground)
-        }
-        .buttonStyle(.plain)
-    }
 
-    private var giftsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Discover your gifts")
-                .font(OVTheme.heading(22))
-                .foregroundStyle(OVTheme.ink)
+            HStack(spacing: 8) {
+                statChip("\(store.giftActiveDayCount(for: gift))", "days this week")
+                statChip("\(store.giftHabitCompletionCount(for: gift))", "habits this week")
+            }
 
-            Text("Scripture helps people see that gifts are not random talent flexes. They are entrusted ways to glorify God and serve others.")
-                .font(OVTheme.body(14))
-                .foregroundStyle(OVTheme.ink.opacity(0.72))
+            ForEach(gift.habits) { habit in
+                let isPriority = dailyGiftFocus?.habitIDs.contains(habit.id) == true
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                        store.toggleGiftHabit(habit.id)
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(store.isGiftHabitCompleted(habit.id) ? OVTheme.midnight : .white)
+                                .frame(width: 28, height: 28)
+                                .overlay(
+                                    Circle()
+                                        .stroke(store.isGiftHabitCompleted(habit.id) ? OVTheme.midnight : OVTheme.line, lineWidth: 1)
+                                )
 
-            VStack(spacing: 12) {
-                ForEach(giftLanes) { lane in
-                    Button {
-                        scriptureTarget = BibleDataProvider.resolveReference(from: lane.reference)
-                    } label: {
-                        HStack(alignment: .top, spacing: 14) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(lane.accent)
-                                    .frame(width: 48, height: 48)
-
-                                Image(systemName: lane.symbol)
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(OVTheme.midnight)
+                            if store.isGiftHabitCompleted(habit.id) {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(.white)
                             }
+                        }
 
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(lane.title)
-                                    .font(OVTheme.heading(16))
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Text(habit.title)
+                                    .font(OVTheme.heading(15))
                                     .foregroundStyle(OVTheme.ink)
 
-                                Text(lane.detail)
-                                    .font(OVTheme.body(14))
-                                    .foregroundStyle(OVTheme.ink.opacity(0.72))
-
-                                Text("\(lane.application) - \(lane.reference)")
-                                    .font(OVTheme.body(12))
-                                    .foregroundStyle(OVTheme.gold)
+                                if isPriority {
+                                    Text("TODAY")
+                                        .font(OVTheme.body(10))
+                                        .foregroundStyle(OVTheme.midnight)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(giftAccent(gift))
+                                        .clipShape(Capsule())
+                                }
                             }
 
-                            Spacer()
+                            Text("\(habit.detail) • \(habit.reference)")
+                                .font(OVTheme.body(12))
+                                .foregroundStyle(OVTheme.ink.opacity(0.66))
+                                .multilineTextAlignment(.leading)
                         }
-                        .padding(16)
-                        .glorifyCard(cornerRadius: 22)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .id(GlorifyRoute.discoverGifts)
-    }
 
-    @ViewBuilder
-    private var creatorFeedSection: some View {
-        if isBibleSchoolCreatorSpaceUnlocked {
-            NavigationLink {
-                CreationFeedView(store: store)
-            } label: {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Creator feed")
-                                .font(OVTheme.heading(22))
-                                .foregroundStyle(OVTheme.midnight)
-                            Text("An aesthetic space for sharing what Jesus is inspiring in you.")
-                                .font(OVTheme.body(14))
-                                .foregroundStyle(OVTheme.ink.opacity(0.72))
-                        }
                         Spacer()
-                        Text("Bible School")
-                            .font(OVTheme.body(11))
-                            .foregroundStyle(OVTheme.midnight)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(OVTheme.lemon.opacity(0.44))
-                            .clipShape(Capsule())
                     }
-
-                    HStack(spacing: 8) {
-                        topChip("Longer posts")
-                        topChip("3 image slots")
-                        topChip("Comments")
-                    }
-
-                    HStack {
-                        Text("Open creator space")
-                            .font(OVTheme.heading(16))
-                            .foregroundStyle(.white)
-                        Spacer()
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                    .background(OVTheme.midnight)
-                    .clipShape(Capsule())
-                }
-                .padding(20)
-                .background(
-                    LinearGradient(
-                        colors: [OVTheme.orchid.opacity(0.36), .white],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                    .padding(14)
+                    .glorifyCard(
+                        cornerRadius: 20,
+                        fill: store.isGiftHabitCompleted(habit.id)
+                        ? OVTheme.paper
+                        : (isPriority ? giftAccent(gift).opacity(0.35) : OVTheme.cardBackground)
                     )
-                )
-                .glorifyCard()
-            }
-            .buttonStyle(.plain)
-        } else {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Bible School creator space")
-                    .font(OVTheme.heading(22))
-                    .foregroundStyle(OVTheme.midnight)
-
-                Text("Go beyond personal rhythm into a more communal creative feed with richer sharing, more room, and image attachments.")
-                    .font(OVTheme.body(14))
-                    .foregroundStyle(OVTheme.ink.opacity(0.74))
-
-                VStack(alignment: .leading, spacing: 8) {
-                    previewBullet("Share longer creation stories")
-                    previewBullet("Attach up to 3 images to a post")
-                    previewBullet("Reply inside an aesthetic creator feed")
-                }
-
-                Button {
-                    showSchoolPreview = true
-                } label: {
-                    Text("See creator feed preview")
-                        .font(OVTheme.heading(15))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
-                        .background(OVTheme.midnight)
-                        .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(20)
-            .glorifyCard()
+
+            Text(gift.caution)
+                .font(OVTheme.body(12))
+                .foregroundStyle(OVTheme.gold)
         }
+        .padding(OVTheme.cardPadding)
+        .glorifyCard(cornerRadius: 22)
     }
 
-    private var waysSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Creative lanes")
+    private var giftReflectionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Gift reflection")
                 .font(OVTheme.heading(22))
                 .foregroundStyle(OVTheme.ink)
 
-            Text("These keep your creativity anchored in Scripture, not only in inspiration.")
+            Text("Write what you actually used today, where it felt hard, or where God is stretching you.")
                 .font(OVTheme.body(14))
                 .foregroundStyle(OVTheme.ink.opacity(0.72))
 
-            VStack(spacing: 12) {
-                ForEach(ways) { way in
-                    Button {
-                        scriptureTarget = BibleDataProvider.resolveReference(from: way.reference)
-                    } label: {
-                        HStack(alignment: .top, spacing: 14) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(way.accent)
-                                    .frame(width: 50, height: 50)
+            TextEditor(text: $giftReflectionDraft)
+                .focused($giftReflectionFocused)
+                .font(OVTheme.body(15))
+                .frame(minHeight: 120)
+                .padding(10)
+                .background(OVTheme.paper)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(OVTheme.line, lineWidth: 1)
+                )
 
-                                Image(systemName: way.symbol)
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(OVTheme.midnight)
-                            }
-
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(way.title)
-                                    .font(OVTheme.heading(16))
-                                    .foregroundStyle(OVTheme.ink)
-                                Text(way.detail)
-                                    .font(OVTheme.body(14))
-                                    .foregroundStyle(OVTheme.ink.opacity(0.72))
-                                Text("\(way.practice) - \(way.reference)")
-                                    .font(OVTheme.body(12))
-                                    .foregroundStyle(OVTheme.gold)
-                            }
-
-                            Spacer()
-                        }
-                        .padding(16)
-                        .glorifyCard(cornerRadius: 22)
-                    }
-                    .buttonStyle(.plain)
+            Button {
+                if store.saveGiftTrainingReflection(giftReflectionDraft) {
+                    giftReflectionDraft = store.giftTrainingCheckIn().reflection
+                    giftReflectionFocused = false
                 }
+            } label: {
+                Text("Save reflection")
+                    .font(OVTheme.heading(15))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(OVTheme.midnight)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(OVTheme.cardPadding)
+        .glorifyCard()
+    }
+
+    private func statChip(_ value: String, _ label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(OVTheme.heading(14))
+                .foregroundStyle(OVTheme.midnight)
+            Text(label)
+                .font(OVTheme.body(11))
+                .foregroundStyle(OVTheme.ink.opacity(0.62))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(OVTheme.smoke)
+        .clipShape(Capsule())
+    }
+
+    private func giftAccent(_ gift: SpiritualGiftKind) -> Color {
+        switch gift {
+        case .encouragement:
+            return OVTheme.orchid.opacity(0.32)
+        case .service:
+            return OVTheme.mint.opacity(0.34)
+        case .teaching:
+            return OVTheme.sky.opacity(0.34)
+        case .mercy:
+            return OVTheme.lemon.opacity(0.34)
+        case .leadership:
+            return OVTheme.sand.opacity(0.38)
+        case .creativity:
+            return OVTheme.lemon.opacity(0.42)
+        }
+    }
+
+    private func giftResultAccordionSection<Content: View>(
+        id: String,
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        giftAccordionSection(
+            id: id,
+            title: title,
+            subtitle: subtitle,
+            systemImage: systemImage,
+            expandedIDs: $expandedGiftResultSections,
+            content: content
+        )
+    }
+
+    private func giftPathAccordionSection<Content: View>(
+        id: String,
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        giftAccordionSection(
+            id: id,
+            title: title,
+            subtitle: subtitle,
+            systemImage: systemImage,
+            expandedIDs: $expandedGiftPathSections,
+            content: content
+        )
+    }
+
+    private func giftAccordionSection<Content: View>(
+        id: String,
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        expandedIDs: Binding<Set<String>>,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        let isExpanded = expandedIDs.wrappedValue.contains(id)
+
+        return VStack(alignment: .leading, spacing: isExpanded ? 12 : 0) {
+            Button {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                    if expandedIDs.wrappedValue.contains(id) {
+                        expandedIDs.wrappedValue.remove(id)
+                    } else {
+                        expandedIDs.wrappedValue.insert(id)
+                    }
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(OVTheme.lemon.opacity(0.28))
+                            .frame(width: 46, height: 46)
+
+                        Image(systemName: systemImage)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(OVTheme.midnight)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title)
+                            .font(OVTheme.heading(17))
+                            .foregroundStyle(OVTheme.midnight)
+
+                        Text(subtitle)
+                            .font(OVTheme.body(12))
+                            .foregroundStyle(OVTheme.ink.opacity(0.66))
+                            .multilineTextAlignment(.leading)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(OVTheme.ink.opacity(0.62))
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .padding(16)
+                .glorifyCard(cornerRadius: 22, fill: OVTheme.elevatedCard)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("glorify.accordion.\(id)")
+
+            if isExpanded {
+                content()
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
 
-    private var galleryVisionCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Sacred gallery")
-                .font(OVTheme.heading(22))
-                .foregroundStyle(OVTheme.midnight)
+    private func startGiftQuiz() {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            isTakingGiftQuiz = true
+            isShowingGiftQuizIntro = true
+            showGiftQuizResults = false
+            currentGiftQuestionIndex = 0
+            giftQuizQuestions = GiftDiscoveryCatalog.questions
+            giftQuizAdaptiveAnchorMap = [:]
+            giftQuizAnswers = [:]
+            expandedGiftResultSections = []
+            expandedGiftPathSections = []
+            morningReminderStatus = nil
+        }
+    }
 
-            Text("This space can grow into Jesus-centered paintings, visual devotionals, and curated art that helps people feel safe creating for God again.")
-                .font(OVTheme.body(14))
-                .foregroundStyle(OVTheme.ink.opacity(0.74))
+    private func selectGiftQuizOption(_ optionID: String) {
+        guard giftQuizQuestions.indices.contains(currentGiftQuestionIndex) else { return }
 
-            HStack(spacing: 8) {
-                topChip("Art")
-                topChip("Visual devotionals")
-                topChip("Creation culture")
+        let question = currentGiftQuestion
+        giftQuizAnswers[question.id] = optionID
+
+        if GiftDiscoveryCatalog.isBaseQuestionID(question.id) {
+            refreshAdaptiveFollowUp(after: question, selectedOptionID: optionID)
+        }
+
+        if currentGiftQuestionIndex >= giftQuizQuestions.count - 1 {
+            store.completeGiftQuiz(answers: giftQuizAnswers)
+            giftReflectionDraft = store.giftTrainingCheckIn().reflection
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                isTakingGiftQuiz = false
+                isShowingGiftQuizIntro = false
+                showGiftQuizResults = true
+                expandedGiftResultSections = []
+            }
+            return
+        }
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            currentGiftQuestionIndex += 1
+        }
+    }
+
+    private func refreshAdaptiveFollowUp(after question: GiftDiscoveryQuestion, selectedOptionID: String) {
+        removeAdaptiveFollowUp(forAnchorQuestionID: question.id)
+
+        let existingFollowUpIDs = Set(giftQuizAdaptiveAnchorMap.values)
+        guard let followUp = GiftDiscoveryCatalog.adaptiveFollowUp(
+            forBaseQuestionID: question.id,
+            selectedOptionID: selectedOptionID,
+            existingFollowUpIDs: existingFollowUpIDs
+        ) else {
+            return
+        }
+
+        let insertionIndex = min(currentGiftQuestionIndex + 1, giftQuizQuestions.count)
+        giftQuizQuestions.insert(followUp, at: insertionIndex)
+        giftQuizAdaptiveAnchorMap[question.id] = followUp.id
+    }
+
+    private func removeAdaptiveFollowUp(forAnchorQuestionID questionID: String) {
+        guard let followUpID = giftQuizAdaptiveAnchorMap.removeValue(forKey: questionID) else { return }
+        giftQuizAnswers.removeValue(forKey: followUpID)
+
+        guard let followUpIndex = giftQuizQuestions.firstIndex(where: { $0.id == followUpID }) else { return }
+        giftQuizQuestions.remove(at: followUpIndex)
+
+        if followUpIndex < currentGiftQuestionIndex {
+            currentGiftQuestionIndex = max(0, currentGiftQuestionIndex - 1)
+        } else if currentGiftQuestionIndex >= giftQuizQuestions.count {
+            currentGiftQuestionIndex = max(0, giftQuizQuestions.count - 1)
+        }
+    }
+
+    private func enableMorningReminders() {
+        Task {
+            isEnablingMorningReminders = true
+            defer { isEnablingMorningReminders = false }
+
+            let settings = store.glorifyReminderSettings ?? .dailyMorning
+            let enabled = await GlorifyReminderService.enableMorningQuotes(using: settings)
+
+            if enabled {
+                store.saveGlorifyReminderSettings(settings)
+                morningReminderStatus = "Morning inspiration is on. We’ll send one around 7:00 AM each day."
+            } else {
+                morningReminderStatus = "Morning reminders stayed off for now. You can turn them on later from Glorify."
             }
         }
-        .padding(20)
-        .background(
-            LinearGradient(
-                colors: [OVTheme.sky.opacity(0.35), .white],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .glorifyCard()
     }
 
     private func topChip(_ label: String) -> some View {
@@ -652,17 +1291,36 @@ struct GlorifyView: View {
         }
     }
 
-    private func habitAccent(_ habit: CreativeHabit) -> Color {
-        switch habit {
-        case .worshipFirst:
-            return OVTheme.lemon.opacity(0.5)
-        case .createSomething:
-            return OVTheme.sky.opacity(0.62)
-        case .refineWithCare:
-            return OVTheme.mint.opacity(0.7)
-        case .shareLight:
-            return OVTheme.orchid.opacity(0.68)
+    private func heroMetricTile(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(OVTheme.heading(16))
+                .foregroundStyle(OVTheme.midnight)
+            Text(label)
+                .font(OVTheme.body(11))
+                .foregroundStyle(OVTheme.ink.opacity(0.66))
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.white.opacity(0.94))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func detailBox(title: String, text: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(OVTheme.body(11))
+                .foregroundStyle(OVTheme.midnight)
+
+            Text(text)
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.8))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(tint)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private func shortWeekday(_ date: Date) -> String {
@@ -675,8 +1333,12 @@ struct GlorifyView: View {
         guard jumpTarget == .discoverGifts else { return }
 
         DispatchQueue.main.async {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
-                proxy.scrollTo(GlorifyRoute.discoverGifts, anchor: .top)
+            if !hasGiftProfile {
+                startGiftQuiz()
+            } else {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                    proxy.scrollTo(GlorifyScrollAnchor.discoverGifts, anchor: .top)
+                }
             }
             jumpTarget = nil
         }
@@ -692,13 +1354,13 @@ private struct CreationFeedView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
                 headerCard
                 composeCard
                 feedSection
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.horizontal, OVTheme.screenHorizontalPadding)
+            .padding(.vertical, OVTheme.screenVerticalPadding)
         }
         .background(OVTheme.mainBackground.ignoresSafeArea())
         .navigationTitle("Creator Feed")
@@ -730,7 +1392,7 @@ private struct CreationFeedView: View {
                 feedChip("Creative community")
             }
         }
-        .padding(20)
+        .padding(OVTheme.cardPadding)
         .background(
             LinearGradient(
                 colors: [OVTheme.orchid.opacity(0.34), .white],
@@ -769,7 +1431,7 @@ private struct CreationFeedView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(20)
+        .padding(OVTheme.cardPadding)
         .glorifyCard()
     }
 
@@ -1241,7 +1903,8 @@ private struct FlexibleChipRow<Item: Hashable & Identifiable & RawRepresentable>
                         .frame(maxWidth: .infinity)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
-                        .background(selected == item ? OVTheme.midnight : OVTheme.smoke)
+                        .background(selected == item
+                                    ? OVTheme.midnight : OVTheme.smoke)
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -1250,25 +1913,9 @@ private struct FlexibleChipRow<Item: Hashable & Identifiable & RawRepresentable>
     }
 }
 
-private struct GlorifySurfaceCardModifier: ViewModifier {
-    let cornerRadius: CGFloat
-    let fill: Color
-
-    func body(content: Content) -> some View {
-        content
-            .background(fill)
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(OVTheme.line, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.05), radius: 18, y: 8)
-    }
-}
-
 private extension View {
     func glorifyCard(cornerRadius: CGFloat = 24, fill: Color = OVTheme.cardBackground) -> some View {
-        modifier(GlorifySurfaceCardModifier(cornerRadius: cornerRadius, fill: fill))
+        premiumSurfaceCard(cornerRadius: cornerRadius, fill: fill, shadowOpacity: 0.06)
     }
 }
 
@@ -1276,7 +1923,6 @@ struct GlorifyView_Previews: PreviewProvider {
     static var previews: some View {
         GlorifyView(
             store: SoulJourneyStore(),
-            accessManager: SubscriptionAccessManager(),
             jumpTarget: .constant(nil)
         )
     }
