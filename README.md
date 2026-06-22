@@ -11,22 +11,4 @@ One Visioon is a Bible-centered discipleship app built for Scripture reading, gu
 - Bible in a Year now opens its full 12-month checkpoint path.
 - Companion, Glorify, Quests, Journey, and growth tracking remain connected to the user's study progress.
 
-## Tutorial Image Assets
-Tutorial slides are loaded from the asset catalog:
 
-`/Users/laptcv/Desktop/onevisioon/onevisioon/Assets.xcassets`
-
-Create or replace image sets with these exact names:
-
-- `home1tut`, `home2tut`, `home3tut`
-- `glorify1tut`, `glorify2tut`, `glorify3tut`
-- `bible1tut`, `bible2tut`, `bible3tut`
-- `lessons1tut`, `lessons2tut`, `lessons3tut`
-- `chat1tut`, `chat2tut`, `chat3tut`
-
-Recommended image size: `1290x2796` px portrait. Use a white background and keep important text/art inside a centered safe area around `1080x2200` px. The app displays these images full-screen with `scaledToFill`, so edges can crop slightly on different iPhone sizes.
-
-## App Store Notes
-- Keep tutorial images clean, high contrast, and away from borders.
-- Do not include API keys or private credentials in the repo.
-- The Greek tools are study helps and should keep directing users back to verse and chapter context.
