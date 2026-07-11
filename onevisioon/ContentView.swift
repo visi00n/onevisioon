@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 import UIKit
 
@@ -66,7 +67,7 @@ private struct HubTutorialSlide: Identifiable, Hashable {
 }
 
 private enum HubTutorialDefaults {
-    private static let maxDeclines = 3
+    private static let maxDeclines = 2
 
     static func shouldPrompt(for tab: MainTab) -> Bool {
         !UserDefaults.standard.bool(forKey: completedKey(for: tab))
@@ -137,7 +138,7 @@ struct ContentView: View {
     var body: some View {
         Group {
             if AppExperience.showsOnboarding && !store.onboardingCompleted {
-                OnboardingView(store: store, accessManager: accessManager)
+                AppleSignupGateView(store: store, accessManager: accessManager)
             } else {
                 MainTabView(
                     store: store,
@@ -218,6 +219,117 @@ struct ContentView: View {
             store: store,
             allowsRemoteOnboardingCompletion: true
         )
+    }
+}
+
+private struct AppleSignupGateView: View {
+    @ObservedObject var store: SoulJourneyStore
+    @ObservedObject var accessManager: SubscriptionAccessManager
+    @EnvironmentObject private var authManager: AuthSessionManager
+
+    private let privacyURL = URL(string: "https://unovisioon.com/privacy-policy")!
+    private let termsURL = URL(string: "https://unovisioon.com/terms")!
+
+    var body: some View {
+        ZStack {
+            OVTheme.mainBackground.ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 22) {
+                    Spacer(minLength: 34)
+
+                    signupHero
+                    signupButton
+                    legalDisclosure
+
+                    if !authManager.errorMessage.isEmpty {
+                        Text(authManager.errorMessage)
+                            .font(OVTheme.body(13))
+                            .foregroundStyle(OVTheme.coral)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 18)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 28)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .task {
+            await accessManager.loadProducts()
+            if authManager.isSignedIn {
+                completeSignup()
+            }
+        }
+    }
+
+    private var signupHero: some View {
+        VStack(spacing: 14) {
+            LogoMark(size: 76, cornerRadius: 18)
+
+            Text("One Visioon")
+                .font(OVTheme.display(42))
+                .foregroundStyle(OVTheme.midnight)
+                .multilineTextAlignment(.center)
+
+            Text("Read Scripture, save your progress, and unlock deeper Bible study when you choose Premium.")
+                .font(OVTheme.body(16))
+                .foregroundStyle(OVTheme.ink.opacity(0.76))
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+        }
+        .padding(26)
+        .frame(maxWidth: .infinity)
+        .premiumSurfaceCard(cornerRadius: 28, fill: OVTheme.elevatedCard)
+    }
+
+    private var signupButton: some View {
+        SignInWithAppleButton(.signUp) { request in
+            authManager.configureAppleRequest(request)
+        } onCompletion: { result in
+            Task {
+                await authManager.handleAppleSignIn(result: result, store: store)
+                if authManager.isSignedIn {
+                    completeSignup()
+                }
+            }
+        }
+        .signInWithAppleButtonStyle(.black)
+        .frame(height: 54)
+        .clipShape(Capsule())
+        .disabled(authManager.isAuthenticating)
+        .opacity(authManager.isAuthenticating ? 0.7 : 1)
+        .accessibilityLabel("Sign up with Apple ID")
+    }
+
+    private var legalDisclosure: some View {
+        VStack(spacing: 10) {
+            Text("By signing up, you agree to the One Visioon Terms of Use and Privacy Policy. One Visioon includes an optional auto-renewable Premium subscription shown as $3/month, billed yearly through your Apple Account. Payment, renewal, cancellation, and subscription management are handled by Apple.")
+                .font(OVTheme.body(12))
+                .foregroundStyle(OVTheme.ink.opacity(0.68))
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+
+            HStack(spacing: 18) {
+                Link("Terms of Use", destination: termsURL)
+                Link("Privacy Policy", destination: privacyURL)
+            }
+            .font(OVTheme.heading(13))
+            .foregroundStyle(OVTheme.midnight)
+        }
+        .padding(.horizontal, 8)
+    }
+
+    private func completeSignup() {
+        var profile = store.onboardingProfile
+        if profile.selectedVersion.trimmed.isEmpty {
+            profile.selectedVersion = "study"
+        }
+        if profile.selectedPremiumPlan.trimmed.isEmpty {
+            profile.selectedPremiumPlan = "yearly"
+        }
+        store.completeOnboarding(profile: profile)
     }
 }
 

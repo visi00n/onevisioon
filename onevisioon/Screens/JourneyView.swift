@@ -6,6 +6,7 @@ struct OneVisioonHubView: View {
     @ObservedObject var store: SoulJourneyStore
     @Environment(\.dismiss) private var dismiss
     @State private var showPrivacyPolicy = false
+    @State private var showTermsOfUse = false
 
     var body: some View {
         NavigationStack {
@@ -31,6 +32,9 @@ struct OneVisioonHubView: View {
         }
         .sheet(isPresented: $showPrivacyPolicy) {
             ProfilePrivacyPolicySheet()
+        }
+        .sheet(isPresented: $showTermsOfUse) {
+            ProfileTermsOfUseSheet()
         }
     }
 
@@ -77,6 +81,13 @@ struct OneVisioonHubView: View {
                 showPrivacyPolicy = true
             } label: {
                 hubButtonRow(title: "Privacy Policy", subtitle: "Read how your data is stored and used.")
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                showTermsOfUse = true
+            } label: {
+                hubButtonRow(title: "Terms of Use", subtitle: "Review subscriptions, conduct, account rules, and legal terms.")
             }
             .buttonStyle(.plain)
 
@@ -1431,6 +1442,72 @@ private struct ProfilePrivacyPolicySheet: View {
             }
             .background(OVTheme.mainBackground.ignoresSafeArea())
             .navigationTitle("Privacy Policy")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(OVTheme.body(15))
+                }
+            }
+        }
+    }
+
+    private func policySection(title: String, body: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(OVTheme.heading(18))
+                .foregroundStyle(OVTheme.midnight)
+
+            Text(body)
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.8))
+        }
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 18, fill: OVTheme.elevatedCard)
+    }
+}
+
+private struct ProfileTermsOfUseSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
+                    policySection(
+                        title: "Terms of Use",
+                        body: "By using One Visioon, you agree to the One Visioon Terms of Use and Apple's standard End User License Agreement where applicable."
+                    )
+
+                    policySection(
+                        title: "Subscription",
+                        body: "One Visioon Premium is an optional auto-renewable yearly subscription displayed as $3/month, billed yearly through your Apple Account. You can manage or cancel it in App Store account settings."
+                    )
+
+                    policySection(
+                        title: "Not Professional Advice",
+                        body: "One Visioon is for Bible study, spiritual education, and personal reflection. It is not medical, mental-health, legal, financial, or emergency advice."
+                    )
+
+                    policySection(
+                        title: "Community Conduct",
+                        body: "Do not post harassment, threats, hate, explicit sexual content, spam, illegal content, private information about others, or content encouraging self-harm or violence."
+                    )
+
+                    Link("Open full Terms of Use", destination: URL(string: "https://unovisioon.com/terms")!)
+                        .font(OVTheme.heading(15))
+                        .foregroundStyle(OVTheme.midnight)
+                        .padding(OVTheme.cardPadding)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .premiumSurfaceCard(cornerRadius: 18, fill: OVTheme.elevatedCard)
+                }
+                .padding(.horizontal, OVTheme.screenHorizontalPadding)
+                .padding(.vertical, OVTheme.screenVerticalPadding)
+            }
+            .background(OVTheme.mainBackground.ignoresSafeArea())
+            .navigationTitle("Terms of Use")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
