@@ -1,18 +1,19 @@
 # One Visioon Privacy Policy
 
-Last updated: May 2026
+Last updated: July 2026
 
 ## Overview
 One Visioon is a Bible study and discipleship app with ESV, ASV, CSB, NIV, and Greek Bible support, focused on daily Scripture reading, saved progress, notes, highlights, and deeper chapter study.
 
-## Information Stored In Version 1.0
-In version 1.0, One Visioon stores the following information locally on your device:
+## Information Stored Or Processed
+One Visioon may store the following information locally on your device and, when you sign in with Apple and cloud sync is configured, in One Visioon's Supabase-backed cloud database:
 - Reading progress
 - Streaks and activity history
 - Selected Bible version (ESV, ASV, CSB, NIV, or Greek Bible)
 - Bible notes and highlights
 - Lesson reflections
-- Onboarding choices such as your name, optional email, and selected study path
+- Onboarding choices such as your name, optional email, country or area code if provided, and selected study path
+- Optional community posts, comments, chat messages, and public profile details you choose to share
 - If you use Sign in with Apple, your Apple user identifier and any name or email Apple shares with the app
 
 ## Information We Do Not Collect In This Build
@@ -21,11 +22,18 @@ This build does not include:
 - Advertising SDKs
 - Sale of personal data
 - Background location tracking
+- App tracking transparency tracking for advertising
 
-If you choose to sign in, One Visioon can sync key study data using Supabase Auth and a connected cloud database. Without sign-in, your data remains on your device.
+If you choose to sign in, One Visioon can sync key study data using Supabase Auth and a connected cloud database protected by Row Level Security policies. Without sign-in, your data remains on your device except for Apple StoreKit purchase processing handled by Apple.
 
-## Billing In This Build
-Bible School billing is temporarily disabled in this test build so the full lesson and quest experience can be reviewed without purchase screens.
+## Billing
+One Visioon Premium is offered through Apple's StoreKit in-app purchase system as an auto-renewable yearly subscription displayed in the app as $3/month, billed yearly. Apple processes payments, renewals, cancellations, refunds, and subscription management.
+
+## Account Deletion And Data Requests
+You can start an account and data deletion request from the Account screen in the app. That flow signs you out, clears local app data on the device, and opens a support email so One Visioon can process any cloud-account deletion request. You may also contact support directly at uvisioon@gmail.com.
+
+## Security
+One Visioon uses Sign in with Apple, Keychain storage for saved auth sessions, HTTPS network requests, Apple's StoreKit purchase flow, and Supabase Row Level Security for cloud data access. No mobile app can be guaranteed immune from every attack, but the app is designed to minimize unnecessary data collection and avoid shipping server-only secrets in the app.
 
 ## Bible Translation Notices
 One Visioon includes multiple Bible translations with their required attribution notices:
@@ -59,3 +67,5 @@ If data handling changes in future releases, this privacy policy and App Store p
 - Email: uvisioon@gmail.com
 - Website: https://unovisioon.com
 - Privacy Policy URL: https://unovisioon.com/privacy-policy
+- Support URL: https://unovisioon.com/support
+- Terms URL: https://unovisioon.com/terms

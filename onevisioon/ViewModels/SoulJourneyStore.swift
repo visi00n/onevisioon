@@ -705,6 +705,69 @@ final class SoulJourneyStore: ObservableObject {
         upsertOnboardingLeadRecord(using: snapshot.onboardingProfile)
     }
 
+    func deleteLocalUserData() {
+        [
+            DefaultsKey.onboardingCompleted,
+            DefaultsKey.onboardingProfile,
+            DefaultsKey.publicProfileSettings,
+            DefaultsKey.wisdomPoints,
+            DefaultsKey.lessonProgressMap,
+            DefaultsKey.questAttempts,
+            DefaultsKey.lessonNotes,
+            DefaultsKey.chapterReflections,
+            DefaultsKey.lessonStudyStepMap,
+            DefaultsKey.prayerFeedPosts,
+            DefaultsKey.dailyGrowthEntries,
+            DefaultsKey.activityDayKeys,
+            DefaultsKey.purchasedStoreItemIDs,
+            DefaultsKey.selectedBibleVersion,
+            DefaultsKey.likedBibleVerseReferences,
+            DefaultsKey.highlightedBibleVerseReferences,
+            DefaultsKey.bibleVerseHighlights,
+            DefaultsKey.bibleVerseNotes,
+            DefaultsKey.onboardingLeadSheet,
+            DefaultsKey.lastReadBibleLocation,
+            DefaultsKey.creativeCheckIns,
+            DefaultsKey.creationFeedPosts,
+            DefaultsKey.resetChallengeProgress,
+            DefaultsKey.giftDiscoveryProfile,
+            DefaultsKey.giftTrainingCheckIns,
+            DefaultsKey.glorifyReminderSettings,
+            DefaultsKey.requiresPostPurchaseAccountLink,
+            DefaultsKey.completedPostPurchaseAccountLink
+        ].forEach(defaults.removeObject)
+
+        try? KeychainStore.delete(account: Self.localRecoverySnapshotAccount)
+
+        onboardingCompleted = false
+        onboardingProfile = .empty
+        publicProfileSettings = .empty
+        wisdomPoints = 0
+        lessonProgressMap = [:]
+        questAttempts = []
+        lessonNotes = []
+        chapterReflections = []
+        lessonStudyStepMap = [:]
+        prayerFeedPosts = Self.seedPrayerFeedPosts
+        dailyGrowthEntries = []
+        activityDayKeys = []
+        purchasedStoreItemIDs = []
+        selectedBibleVersion = .kjv
+        likedBibleVerseReferences = []
+        bibleVerseHighlights = []
+        bibleVerseNotes = []
+        onboardingLeadSheet = []
+        creativeCheckIns = []
+        creationFeedPosts = Self.seedCreationFeedPosts
+        giftDiscoveryProfile = nil
+        giftTrainingCheckIns = []
+        glorifyReminderSettings = nil
+        resetChallengeProgress = .empty
+        lastReadBibleLocation = nil
+        requiresPostPurchaseAccountLink = false
+        completedPostPurchaseAccountLink = false
+    }
+
     func markLessonCompleted(_ lesson: WisdomLesson) {
         guard isLessonUnlocked(lesson) else { return }
         markActiveToday()

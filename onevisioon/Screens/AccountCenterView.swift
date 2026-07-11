@@ -3,8 +3,10 @@ import SwiftUI
 
 struct AccountCenterView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var authManager: AuthSessionManager
     @EnvironmentObject private var store: SoulJourneyStore
+    @State private var showsDeleteConfirmation = false
 
     private var syncSnapshot: UserProgressSyncSnapshot {
         store.exportSyncSnapshot()
@@ -18,6 +20,7 @@ struct AccountCenterView: View {
                     liveStatusCard
                     snapshotCard
                     progressSnapshotCard
+                    legalAndSafetyCard
                 }
                 .padding(20)
             }
@@ -190,6 +193,79 @@ struct AccountCenterView: View {
         .padding(20)
         .background(.white)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var legalAndSafetyCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Legal & data safety")
+                .font(OVTheme.heading(20))
+                .foregroundStyle(OVTheme.ink)
+
+            Text("You can review One Visioon's public policies and start an account/data deletion request anytime.")
+                .font(OVTheme.body(14))
+                .foregroundStyle(OVTheme.ink.opacity(0.72))
+
+            Link("Privacy Policy", destination: URL(string: "https://unovisioon.com/privacy-policy")!)
+                .font(OVTheme.heading(14))
+                .foregroundStyle(OVTheme.midnight)
+
+            Link("Support", destination: URL(string: "https://unovisioon.com/support")!)
+                .font(OVTheme.heading(14))
+                .foregroundStyle(OVTheme.midnight)
+
+            Link("Terms of Use", destination: URL(string: "https://unovisioon.com/terms")!)
+                .font(OVTheme.heading(14))
+                .foregroundStyle(OVTheme.midnight)
+
+            Button(role: .destructive) {
+                showsDeleteConfirmation = true
+            } label: {
+                Text("Delete account and local data")
+                    .font(OVTheme.heading(15))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(OVTheme.coral)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(20)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .confirmationDialog(
+            "Delete account and local data?",
+            isPresented: $showsDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete local data and email support", role: .destructive) {
+                requestAccountDeletion()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This signs you out, clears saved app data on this device, and opens an email so support can delete any cloud account records.")
+        }
+    }
+
+    private func requestAccountDeletion() {
+        let email = authManager.currentSession?.email.trimmed ?? store.onboardingProfile.email.trimmed
+        authManager.signOut()
+        store.deleteLocalUserData()
+
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = "uvisioon@gmail.com"
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: "One Visioon account deletion request"),
+            URLQueryItem(
+                name: "body",
+                value: "Please delete my One Visioon account and associated cloud data.\n\nAccount email or Apple relay email: \(email)\n\nI understand local data on this device has been cleared."
+            )
+        ]
+
+        if let url = components.url {
+            openURL(url)
+        }
     }
 
     private func statusPill(_ title: String, tint: Color) -> some View {

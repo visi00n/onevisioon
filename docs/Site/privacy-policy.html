@@ -98,19 +98,21 @@
     <section class="card">
       <div class="eyebrow">One Visioon</div>
       <h1>Privacy Policy</h1>
-      <p>Last updated: May 2026</p>
+      <p>Last updated: July 2026</p>
 
       <h2>Overview</h2>
       <p>One Visioon is a Bible study and discipleship app with ESV, ASV, CSB, NIV, and Greek Bible support, focused on daily Scripture reading, saved progress, notes, highlights, and deeper chapter study.</p>
 
-      <h2>Information stored in version 1.0</h2>
+      <h2>Information stored or processed</h2>
+      <p>One Visioon may store the following information locally on your device and, when you sign in with Apple and cloud sync is configured, in One Visioon's Supabase-backed cloud database:</p>
       <ul>
         <li>Reading progress</li>
         <li>Streaks and activity history</li>
         <li>Selected Bible version (ESV, ASV, CSB, NIV, or Greek Bible)</li>
         <li>Bible notes and highlights</li>
         <li>Lesson reflections</li>
-        <li>Onboarding choices such as your name, optional email, and selected study path</li>
+        <li>Onboarding choices such as your name, optional email, country or area code if provided, and selected study path</li>
+        <li>Optional community posts, comments, chat messages, and public profile details you choose to share</li>
         <li>If you use Sign in with Apple, your Apple user identifier and any name or email Apple shares with the app</li>
       </ul>
 
@@ -120,11 +122,18 @@
         <li>Advertising SDKs</li>
         <li>Sale of personal data</li>
         <li>Background location tracking</li>
+        <li>App tracking transparency tracking for advertising</li>
       </ul>
-      <p>If you choose to sign in, One Visioon can sync key study data using Supabase Auth and a connected cloud database. Without sign-in, your data remains on your device.</p>
+      <p>If you choose to sign in, One Visioon can sync key study data using Supabase Auth and a connected cloud database protected by Row Level Security policies. Without sign-in, your data remains on your device except for Apple StoreKit purchase processing handled by Apple.</p>
 
-      <h2>Billing in this build</h2>
-      <p>Bible School billing is temporarily disabled in this test build so the full lesson and quest experience can be reviewed without purchase screens.</p>
+      <h2>Billing</h2>
+      <p>One Visioon Premium is offered through Apple's StoreKit in-app purchase system as an auto-renewable yearly subscription displayed in the app as $3/month, billed yearly. Apple processes payments, renewals, cancellations, refunds, and subscription management.</p>
+
+      <h2>Account deletion and data requests</h2>
+      <p>You can start an account and data deletion request from the Account screen in the app. That flow signs you out, clears local app data on the device, and opens a support email so One Visioon can process any cloud-account deletion request. You may also contact support directly at uvisioon@gmail.com.</p>
+
+      <h2>Security</h2>
+      <p>One Visioon uses Sign in with Apple, Keychain storage for saved auth sessions, HTTPS network requests, Apple's StoreKit purchase flow, and Supabase Row Level Security for cloud data access. No mobile app can be guaranteed immune from every attack, but the app is designed to minimize unnecessary data collection and avoid shipping server-only secrets in the app.</p>
 
       <h2>Bible translation notices</h2>
       <ul>
@@ -147,7 +156,7 @@
       <p>If data handling changes in future releases, this policy and App Store privacy disclosures will be updated before those changes ship.</p>
 
       <h2>Contact</h2>
-      <p>Email: <a href="mailto:uvisioon@gmail.com">uvisioon@gmail.com</a><br>Website: <a href="https://unovisioon.com">unovisioon.com</a></p>
+      <p>Email: <a href="mailto:uvisioon@gmail.com">uvisioon@gmail.com</a><br>Website: <a href="https://unovisioon.com">unovisioon.com</a><br>Support: <a href="https://unovisioon.com/support">unovisioon.com/support</a><br>Terms: <a href="https://unovisioon.com/terms">unovisioon.com/terms</a></p>
 
       <p class="footer">This page is prepared for hosting as the App Store Connect Privacy Policy URL.</p>
     </section>

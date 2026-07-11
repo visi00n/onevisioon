@@ -30,3 +30,5 @@ Recommended image size: `1290x2796` px portrait. Use a white background and keep
 - Keep tutorial images clean, high contrast, and away from borders.
 - Do not include API keys or private credentials in the repo.
 - The Greek tools are study helps and should keep directing users back to verse and chapter context.
+- Public legal pages live in `docs/Site`: privacy policy, support, and terms of use.
+- The app must only ship the Supabase anon key. Service-role/admin keys belong server-side only.

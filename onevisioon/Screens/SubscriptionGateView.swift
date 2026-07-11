@@ -54,7 +54,7 @@ struct SubscriptionGateView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let privacyURL = URL(string: "https://unovisioon.com/privacy-policy")!
-    private let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
+    private let termsURL = URL(string: "https://unovisioon.com/terms")!
 
     init(
         accessManager: SubscriptionAccessManager,

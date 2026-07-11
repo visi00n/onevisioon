@@ -1,6 +1,6 @@
-# Google Auth Setup
+# Retired Google Auth Notes
 
-One Visioon now supports Google sign-in through Supabase OAuth.
+One Visioon previously had implementation notes for Google sign-in through Supabase OAuth. The launch build is Apple-only for sign-in, so Google sign-in should remain disabled in user-facing UI and should not be described in App Store review notes.
 
 ## App redirect URL
 
@@ -54,4 +54,4 @@ Verified locally:
 
 - `xcodebuild` simulator build succeeds
 - app launches in `iPhone Air` simulator
-- Google sign-in button is live in onboarding and profile/account surfaces
+- Google sign-in button is not live in onboarding or profile/account surfaces

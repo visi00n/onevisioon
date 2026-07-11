@@ -1,24 +1,29 @@
 # One Visioon App Privacy Answers For Version 1.0
 
 ## Current Recommendation
-If version 1.0 ships with local-only storage, Sign in with Apple kept on-device, no analytics SDK, no backend account system, and no newsletter submission backend, the safest App Privacy answer is still:
+Version 1.0 now includes Sign in with Apple, optional Supabase-backed cloud sync, community/profile features, and StoreKit purchases. Do not answer `Data Not Collected` if the submitted build has Supabase/cloud or community features enabled.
 
-- `Data Not Collected`
+Use App Store Connect's questionnaire to disclose the data types the app can collect or sync, including:
+- Contact info: name and email if provided by the user or Apple
+- User ID: Apple/Supabase account identifiers
+- User content: notes, highlights, reflections, posts, comments, chat messages, and profile content
+- Usage data/product interaction: reading progress, lesson progress, streaks, activity days, and selected study path
+- Purchases: subscription status is handled by Apple StoreKit
 
 ## Why
-- Name, email, Apple sign-in identity, notes, highlights, streaks, and lesson progress are currently stored on-device in local app storage.
-- The app does not currently send those fields to your server or a third-party partner.
-- StoreKit purchases are handled by Apple.
+- The app can sync user profile and study data with Supabase after Sign in with Apple.
+- StoreKit purchases are handled by Apple, but the app uses purchase entitlement status to unlock Premium.
 - Opening Discord or Instagram sends the user to those external services, but the app itself is not collecting that data.
+- The app does not include third-party analytics SDKs, advertising SDKs, sale of personal data, background location tracking, or advertising tracking.
 
 ## This Must Change If You Add Any Of The Following
-- Cloud sync / backend profiles
 - Newsletter signup delivery
 - Analytics SDKs
 - Crash reporting SDKs
-- In-app community posting
+- Any new third-party SDK
+- Any tracking or advertising use
 
-If any of those are added, or if Apple sign-in data starts being transmitted to your backend, revisit the App Privacy questionnaire before submission.
+If any of those are added, revisit the App Privacy questionnaire before submission.
 
 ## Where To Fill This In
 App Store Connect:
