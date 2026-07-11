@@ -172,7 +172,6 @@ struct ProfileView: View {
                     editableProfileCard
                     profileActionsCard
                     accountStatusCard
-                    aboutYouCard
                     studySnapshotCard
 
                     if let giftProfile = store.giftDiscoveryProfile {
@@ -278,7 +277,7 @@ struct ProfileView: View {
             } label: {
                 activeProfileRow(
                     title: "Profile Settings",
-                    subtitle: "Review and edit the answers that shape your path.",
+                    subtitle: "Manage your name, username, and profile details.",
                     systemImage: "slider.horizontal.3"
                 )
             }
@@ -516,16 +515,10 @@ struct ProfileView: View {
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
-            } else if authManager.canStartAppleSignIn || authManager.canStartGoogleSignIn {
-                Text(
-                    store.requiresPostPurchaseAccountLink
-                        ? (authManager.isCloudConfigured
-                            ? "Finish account setup now so your membership and progress save under your Apple or Google account."
-                            : "Finish account setup now so your membership and progress save under your Apple account.")
-                        : (authManager.isCloudConfigured
-                            ? "Sign in with Apple or Google to connect this profile and back up your progress with Supabase."
-                            : "Sign in with Apple to keep this profile on your device. Add Supabase config when you want Google and cloud backup.")
-                )
+            } else if authManager.canStartAppleSignIn {
+                Text(authManager.isCloudConfigured
+                    ? "Sign in with Apple if you want to connect this profile and back up your progress."
+                    : "Sign in with Apple if you want this profile connected to your Apple account. You can keep using the app without signing in.")
                     .font(OVTheme.body(13))
                     .foregroundStyle(OVTheme.ink.opacity(0.68))
 
@@ -542,20 +535,6 @@ struct ProfileView: View {
                 .disabled(authManager.isAuthenticating)
                 .opacity(authManager.isAuthenticating ? 0.7 : 1)
 
-                if authManager.canStartGoogleSignIn {
-                    GoogleAuthButton(
-                        title: "Continue with Google",
-                        isLoading: authManager.isAuthenticating
-                    ) {
-                        Task {
-                            await authManager.handleGoogleSignIn(store: store)
-                        }
-                    }
-                    .disabled(authManager.isAuthenticating)
-                    .opacity(authManager.isAuthenticating ? 0.7 : 1)
-                } else {
-                    helperMessage("Google sign-in and cloud sync unlock after Supabase config is added.", tint: OVTheme.gold)
-                }
             } else {
                 helperMessage(authManager.syncStatusLine, tint: OVTheme.gold)
             }
@@ -1101,8 +1080,6 @@ private struct ProfileSettingsView: View {
             VStack(spacing: OVTheme.cardSpacing) {
                 settingsHeader
                 personalDetailsCard
-                pathAnswersCard
-                goalsCard
             }
             .padding(.horizontal, OVTheme.screenHorizontalPadding)
             .padding(.vertical, OVTheme.screenVerticalPadding)
@@ -1114,11 +1091,11 @@ private struct ProfileSettingsView: View {
 
     private var settingsHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Edit your path")
+            Text("Profile details")
                 .font(OVTheme.display(32))
                 .foregroundStyle(OVTheme.midnight)
 
-            Text("These answers shape your Bible guidance, Freedom topic, and profile details.")
+            Text("Update the basic information shown with your profile and community activity.")
                 .font(OVTheme.body(14))
                 .foregroundStyle(OVTheme.ink.opacity(0.72))
         }
@@ -1431,7 +1408,7 @@ private struct ProfilePrivacyPolicySheet: View {
 
                     policySection(
                         title: "Account Sign-In",
-                        body: "One Visioon can use Sign in with Apple on this device, and it connects Apple or Google through Supabase Auth when cloud sync is configured. If either provider shares your name or email, the app uses that information to label your account and keep it consistent."
+                        body: "One Visioon can use Sign in with Apple on this device, and it connects Apple through Supabase Auth when cloud sync is configured. If Apple shares your name or email, the app uses that information to label your account and keep it consistent."
                     )
 
                     policySection(

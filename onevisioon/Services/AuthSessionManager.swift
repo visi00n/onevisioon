@@ -55,7 +55,7 @@ final class AuthSessionManager: ObservableObject {
     }
 
     var canStartGoogleSignIn: Bool {
-        isCloudConfigured
+        false
     }
 
     var googleOAuthRedirectURL: URL {
@@ -65,7 +65,7 @@ final class AuthSessionManager: ObservableObject {
     var syncStatusLine: String {
         if currentSession == nil {
             return isCloudConfigured
-                ? "Ready for secure cloud sign-in with Apple or Google"
+                ? "Ready for secure cloud sign-in with Apple"
                 : "Apple sign-in is available on this device. Add Supabase config to enable cloud sync."
         }
 

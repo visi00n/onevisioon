@@ -3,36 +3,40 @@ import SwiftUI
 struct StruggleSupportView: View {
     @ObservedObject var store: SoulJourneyStore
 
-    @State private var showingChangeSheet = false
+    @AppStorage("ov_freedom_focus_quiz_completed") private var hasCompletedFocusQuiz = false
 
     private var topic: StruggleSupportTopic {
         StruggleSupportCatalog.selectedTopic(for: store.onboardingProfile)
     }
 
     private var guide: LifeSituationGuide {
-        LifeSituationGuide.all.first(where: { $0.id == topic.guideID }) ?? LifeSituationGuide.recommended(for: store.onboardingProfile)
+        LifeSituationGuide.all.first(where: { $0.id == topic.guideID }) ?? LifeSituationGuide.all[0]
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
-                heroCard
-                overviewCard
-                scriptureCard
-                coursePreviewCard
-                changeButton
+        Group {
+            if hasCompletedFocusQuiz {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
+                        heroCard
+                        overviewCard
+                        scriptureCard
+                        coursePreviewCard
+                        changeButton
+                    }
+                    .padding(.horizontal, OVTheme.screenHorizontalPadding)
+                    .padding(.vertical, OVTheme.screenVerticalPadding)
+                }
+            } else {
+                FreedomFocusQuizView { selection in
+                    store.updateFocusedStruggle(selection)
+                    hasCompletedFocusQuiz = true
+                }
             }
-            .padding(.horizontal, OVTheme.screenHorizontalPadding)
-            .padding(.vertical, OVTheme.screenVerticalPadding)
         }
         .background(OVTheme.mainBackground.ignoresSafeArea())
         .navigationTitle("Freedom")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showingChangeSheet) {
-            ChangeStruggleSheet(store: store)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
     }
 
     private var heroCard: some View {
@@ -222,9 +226,9 @@ struct StruggleSupportView: View {
 
     private var changeButton: some View {
         Button {
-            showingChangeSheet = true
+            hasCompletedFocusQuiz = false
         } label: {
-            Text("Change the struggle")
+            Text("Retake the Freedom focus quiz")
                 .font(OVTheme.heading(15))
                 .foregroundStyle(OVTheme.midnight)
                 .frame(maxWidth: .infinity)
@@ -243,6 +247,77 @@ struct StruggleSupportView: View {
             .padding(.vertical, 7)
             .background(.white.opacity(0.94))
             .clipShape(Capsule())
+    }
+}
+
+private struct FreedomFocusQuizView: View {
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: OVTheme.cardSpacing) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Freedom focus quiz")
+                        .font(OVTheme.display(34))
+                        .foregroundStyle(OVTheme.midnight)
+
+                    Text("What do you most want God’s help with right now?")
+                        .font(OVTheme.heading(20))
+                        .foregroundStyle(OVTheme.ink)
+
+                    Text("Choose the most honest answer. Freedom will use it to open the right Scripture, prayer, and next step.")
+                        .font(OVTheme.body(14))
+                        .foregroundStyle(OVTheme.ink.opacity(0.72))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(OVTheme.cardPadding)
+                .premiumSurfaceCard(cornerRadius: 24, fill: OVTheme.elevatedCard)
+
+                focusSection(title: "Life and mind", options: StruggleSupportCatalog.currentStruggleTitles)
+                focusSection(title: "Spiritual patterns", options: StruggleSupportCatalog.spiritualStruggleTitles)
+            }
+            .padding(.horizontal, OVTheme.screenHorizontalPadding)
+            .padding(.vertical, OVTheme.screenVerticalPadding)
+        }
+    }
+
+    private func focusSection(title: String, options: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(OVTheme.heading(18))
+                .foregroundStyle(OVTheme.midnight)
+
+            ForEach(options, id: \.self) { option in
+                Button {
+                    onSelect(option)
+                } label: {
+                    HStack(spacing: 12) {
+                        Text(displayTitle(for: option))
+                            .font(OVTheme.body(15))
+                            .foregroundStyle(OVTheme.ink)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(OVTheme.midnight)
+                    }
+                    .padding(15)
+                    .background(OVTheme.paper)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(OVTheme.line, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(OVTheme.cardPadding)
+        .premiumSurfaceCard(cornerRadius: 22, fill: OVTheme.elevatedCard)
+    }
+
+    private func displayTitle(for title: String) -> String {
+        StruggleSupportCatalog.topic(matching: title)?.title ?? title
     }
 }
 

@@ -1103,26 +1103,14 @@ private extension OnboardingView {
 
                 VStack(spacing: hasSelectedPremiumPlan ? 12 : 10) {
                     VStack(spacing: 10) {
-                        HStack(spacing: 12) {
-                            PlanChoiceCard(
-                                title: "Monthly",
-                                price: monthlyPlanPrice,
-                                cadence: monthlyPlanCadence,
-                                selected: selectedPremiumPlan == "monthly",
-                                badge: nil
-                            ) {
-                                selectPremiumPlan("monthly")
-                            }
-
-                            PlanChoiceCard(
-                                title: "Yearly",
-                                price: yearlyPlanPrice,
-                                cadence: yearlyPlanCadence,
-                                selected: selectedPremiumPlan == "yearly",
-                                badge: yearlySavingsBadge
-                            ) {
-                                selectPremiumPlan("yearly")
-                            }
+                        PlanChoiceCard(
+                            title: "Yearly",
+                            price: "$3",
+                            cadence: "/month",
+                            selected: selectedPremiumPlan == "yearly",
+                            badge: "BILLED YEARLY"
+                        ) {
+                            selectPremiumPlan("yearly")
                         }
                     }
                     .offset(y: hasSelectedPremiumPlan ? -6 : 0)
@@ -1888,17 +1876,12 @@ private extension OnboardingView {
             }
 
             if yearlySavingsPercent > 0 {
-                return "\(yearlyPlanPrice)/yr billed yearly. Saves \(yearlySavingsPercent)% versus monthly."
+                return "$3/month, billed yearly at \(yearlyPlanPrice)."
             }
 
-            return "\(yearlyPlanPrice)/yr billed yearly."
+            return "$3/month, billed yearly at \(yearlyPlanPrice)."
         }
-
-        guard accessManager.monthlyProduct != nil else {
-            return "Apple will show the exact price before purchase."
-        }
-
-        return "\(monthlyPlanPrice)/mo. Apple confirms before purchase."
+        return "Apple will show the exact price before purchase."
     }
 
     var monthlyPlanPrice: String {
@@ -2108,7 +2091,6 @@ private extension OnboardingView {
 
     var discoveryOptions: [Option] {
         [
-            Option("Google"),
             Option("Instagram"),
             Option("TikTok"),
             Option("X"),
@@ -3515,30 +3497,6 @@ private struct ReturningAccountSheet: View {
                     .clipShape(Capsule())
                     .disabled(isBusy)
                     .opacity(isBusy ? 0.7 : 1)
-
-                    if authManager.canStartGoogleSignIn {
-                        GoogleAuthButton(
-                            title: "Continue with Google",
-                            isLoading: authManager.isAuthenticating
-                        ) {
-                            helperText = ""
-
-                            Task {
-                                await authManager.handleGoogleSignIn(
-                                    store: store,
-                                    allowsRemoteOnboardingCompletion: false
-                                )
-
-                                if authManager.isSignedIn {
-                                    await completeReturningSignInIfPremium()
-                                }
-                            }
-                        }
-                        .disabled(isBusy)
-                        .opacity(isBusy ? 0.7 : 1)
-                    } else {
-                        helperTextView("Google sign-in and cloud sync unlock after Supabase config is added.", tint: OVTheme.gold)
-                    }
 
                     if isCheckingMembership {
                         helperTextView("Checking your Apple subscription...", tint: OVTheme.gold)

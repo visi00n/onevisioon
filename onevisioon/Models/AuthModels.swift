@@ -86,9 +86,9 @@ enum AuthBackendStatus: String, Codable, Hashable {
     var detail: String {
         switch self {
         case .supabaseReady:
-            return "Apple and Google sign-in now connect to Supabase so One Visioon can secure accounts and sync progress."
+            return "Sign in with Apple now connects to Supabase so One Visioon can secure accounts and sync progress."
         case .configurationRequired:
-            return "Apple sign-in is available on this device. Add your Supabase project URL and anon key to enable Google sign-in and cloud sync."
+            return "Apple sign-in is available on this device. Add your Supabase project URL and anon key to enable cloud sync."
         }
     }
 }

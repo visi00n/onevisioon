@@ -63,7 +63,7 @@ struct OriginalLanguageWordToken: Codable, Hashable, Identifiable {
             return "Use the selected English verse and the chapter context to read this Greek word carefully. Greek word studies are study helps, not one-word replacements for the whole verse."
         }
 
-        return "In this verse, the local sense is \(localMeaning). The full recorded gloss range is \(glossSummary). Always read that range through the verse and chapter context rather than treating one English word as the whole meaning."
+        return "In this verse, the local sense is \(localMeaning). Read that meaning through the verse and chapter context rather than treating one English word as the whole meaning."
     }
 
     func ensuringMeaningData() -> OriginalLanguageWordToken {

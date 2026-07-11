@@ -40,13 +40,13 @@ struct AccountCenterView: View {
 
     private var accountHero: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(authManager.isCloudConfigured ? "Sign in with Apple or Google" : "Sign in with Apple")
+            Text("Sign in with Apple")
                 .font(OVTheme.heading(28))
                 .foregroundStyle(OVTheme.midnight)
 
             Text(authManager.isCloudConfigured
-                ? "Apple and Google sign-in connect your One Visioon account to Supabase so your profile and study progress can sync securely."
-                : "Apple sign-in now saves your One Visioon account on this device. Add Supabase config when you are ready for Google sign-in and cloud sync.")
+                ? "Sign in with Apple connects your One Visioon account to Supabase so your profile and study progress can sync securely."
+                : "Apple sign-in now saves your One Visioon account on this device. Add Supabase config when you are ready for cloud sync.")
                 .font(OVTheme.body(15))
                 .foregroundStyle(OVTheme.ink.opacity(0.74))
                 .lineSpacing(3)
@@ -115,8 +115,8 @@ struct AccountCenterView: View {
                 .buttonStyle(.plain)
             } else {
                 Text(authManager.isCloudConfigured
-                    ? "Use Apple or Google to open a secure account session and back up your study progress to the cloud."
-                    : "Use Apple to save this account on your device. Google and cloud backup will appear once Supabase is configured.")
+                    ? "Use Apple to open a secure account session and back up your study progress to the cloud."
+                    : "Use Apple to save this account on your device. Cloud backup will appear once Supabase is configured.")
                     .font(OVTheme.body(14))
                     .foregroundStyle(OVTheme.ink.opacity(0.72))
 
@@ -135,20 +135,6 @@ struct AccountCenterView: View {
                     .opacity(authManager.isAuthenticating ? 0.7 : 1)
                 }
 
-                if authManager.canStartGoogleSignIn {
-                    GoogleAuthButton(
-                        title: "Continue with Google",
-                        isLoading: authManager.isAuthenticating
-                    ) {
-                        Task {
-                            await authManager.handleGoogleSignIn(store: store)
-                        }
-                    }
-                    .disabled(authManager.isAuthenticating)
-                    .opacity(authManager.isAuthenticating ? 0.7 : 1)
-                } else {
-                    helperMessage("Google sign-in and cloud backup unlock after Supabase config is added.", tint: OVTheme.gold)
-                }
             }
         }
         .padding(20)
@@ -170,7 +156,7 @@ struct AccountCenterView: View {
                 backendBullet("Lesson progress and completed chapters")
                 backendBullet("Reflections, notes, and verse highlights")
                 backendBullet("Streaks, active days, and last read chapter")
-                backendBullet(authManager.isCloudConfigured ? "Supabase-backed Apple or Google account session" : "Local Apple account session until Supabase is configured")
+                backendBullet(authManager.isCloudConfigured ? "Supabase-backed Apple account session" : "Local Apple account session until Supabase is configured")
             }
 
             HStack(spacing: 8) {

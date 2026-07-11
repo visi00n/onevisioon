@@ -1,6 +1,11 @@
 import SwiftUI
 import UIKit
 
+private enum AppExperience {
+    static let showsOnboarding = true
+    static let showsHubTutorials = true
+}
+
 private enum MainTab: String, CaseIterable, Identifiable, Hashable {
     case home
     case glorify
@@ -26,11 +31,30 @@ private enum MainTab: String, CaseIterable, Identifiable, Hashable {
     }
 
     var tutorialSlides: [HubTutorialSlide] {
-        [
-            HubTutorialSlide(imageName: "\(rawValue)1tut", fallbackTitle: "\(title) tutorial"),
-            HubTutorialSlide(imageName: "\(rawValue)2tut", fallbackTitle: "\(title) tools"),
-            HubTutorialSlide(imageName: "\(rawValue)3tut", fallbackTitle: "\(title) next step")
-        ]
+        (1...tutorialSlideCount).map { slideNumber in
+            HubTutorialSlide(
+                imageName: "\(tutorialAssetPrefix)\(slideNumber)tut",
+                fallbackTitle: slideNumber == 1 ? "\(title) tutorial" : "\(title) next step"
+            )
+        }
+    }
+
+    private var tutorialAssetPrefix: String {
+        switch self {
+        case .lessons:
+            return "lesson"
+        default:
+            return rawValue
+        }
+    }
+
+    private var tutorialSlideCount: Int {
+        switch self {
+        case .glorify, .lessons, .chat:
+            return 2
+        case .home, .bible:
+            return 3
+        }
     }
 }
 
@@ -112,7 +136,7 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if !store.onboardingCompleted {
+            if AppExperience.showsOnboarding && !store.onboardingCompleted {
                 OnboardingView(store: store, accessManager: accessManager)
             } else {
                 MainTabView(
@@ -125,9 +149,11 @@ struct ContentView: View {
         }
         .environmentObject(store)
         .environmentObject(authManager)
+        .environmentObject(accessManager)
         .animation(.spring(response: 0.46, dampingFraction: 0.86), value: store.onboardingCompleted)
         .task {
             await accessManager.refreshAccessState()
+            enforcePremiumBibleVersion()
             await authManager.refreshCredentialStateIfNeeded()
             await syncCloudDataRespectingAccess()
             await GlorifyReminderService.refreshMorningQuotesIfNeeded(using: store.glorifyReminderSettings)
@@ -152,6 +178,7 @@ struct ContentView: View {
             guard newPhase == .active else { return }
             Task {
                 await accessManager.refreshAccessState()
+                enforcePremiumBibleVersion()
                 await authManager.refreshCredentialStateIfNeeded()
                 await syncCloudDataRespectingAccess()
                 await GlorifyReminderService.refreshMorningQuotesIfNeeded(using: store.glorifyReminderSettings)
@@ -173,7 +200,6 @@ struct ContentView: View {
     }
 
     private func trackTodayIfUnlocked() {
-        guard store.onboardingCompleted else { return }
         store.markActiveToday()
     }
 
@@ -181,12 +207,16 @@ struct ContentView: View {
         accessManager.setPreviewSelection(store.onboardingProfile.selectedVersion)
     }
 
+    private func enforcePremiumBibleVersion() {
+        if !accessManager.hasAccess && store.selectedBibleVersion.isOriginalLanguage {
+            store.setBibleVersion(.esv)
+        }
+    }
+
     private func syncCloudDataRespectingAccess() async {
         await authManager.syncCloudDataIfPossible(
             store: store,
-            allowsRemoteOnboardingCompletion: store.onboardingCompleted
-                || accessManager.hasAccess
-                || accessManager.isPreviewModeActive
+            allowsRemoteOnboardingCompletion: true
         )
     }
 }
@@ -208,14 +238,29 @@ private struct MainTabView: View {
         store.requiresPostPurchaseAccountLink && !authManager.isSignedIn
     }
 
+    @State private var premiumFeature: PremiumFeature?
+    @State private var pendingPremiumTab: MainTab?
+
+    private var tabSelection: Binding<MainTab> {
+        Binding(
+            get: { selectedTab },
+            set: { requestTab($0) }
+        )
+    }
+
     var body: some View {
         ZStack {
-            TabView(selection: $selectedTab) {
+            TabView(selection: tabSelection) {
                 ScriptureHomeView(
                     store: store,
                     openGlorifyGifts: {
-                        selectedTab = .glorify
-                        glorifyRoute = .discoverGifts
+                        if accessManager.hasAccess {
+                            selectedTab = .glorify
+                            glorifyRoute = .discoverGifts
+                        } else {
+                            pendingPremiumTab = .glorify
+                            premiumFeature = .glorify
+                        }
                     },
                     openProfile: {
                         showAccountSetupProfile = true
@@ -288,6 +333,9 @@ private struct MainTabView: View {
             .environmentObject(authManager)
             .environmentObject(store)
         }
+        .sheet(item: $premiumFeature) { feature in
+            SubscriptionGateView(accessManager: accessManager, feature: feature)
+        }
         .fullScreenCover(item: $activeTutorialTab) { tab in
             HubTutorialSlideshowView(tab: tab) {
                 completeTutorial(for: tab)
@@ -304,6 +352,26 @@ private struct MainTabView: View {
             tutorialPromptTab = nil
             presentTutorialPromptIfNeeded(for: newTab, delay: 0.35)
         }
+        .onChange(of: accessManager.hasAccess) { _, hasAccess in
+            guard hasAccess, let pendingPremiumTab else { return }
+            selectedTab = pendingPremiumTab
+            self.pendingPremiumTab = nil
+            premiumFeature = nil
+        }
+    }
+
+    private func requestTab(_ tab: MainTab) {
+        guard !requiresPremium(tab) || accessManager.hasAccess else {
+            pendingPremiumTab = tab
+            premiumFeature = tab == .glorify ? .glorify : .lessons
+            return
+        }
+
+        selectedTab = tab
+    }
+
+    private func requiresPremium(_ tab: MainTab) -> Bool {
+        tab == .glorify || tab == .lessons
     }
 
     private func consumePendingDeepLinkIfNeeded() {
@@ -319,7 +387,8 @@ private struct MainTabView: View {
     }
 
     private func presentTutorialPromptIfNeeded(for tab: MainTab, delay: TimeInterval = 0) {
-        guard activeTutorialTab == nil,
+        guard AppExperience.showsHubTutorials,
+              activeTutorialTab == nil,
               !showsAccountSetupLock,
               HubTutorialDefaults.shouldPrompt(for: tab) else { return }
 
@@ -419,38 +488,80 @@ private struct HubTutorialSlideshowView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+        VStack(spacing: 0) {
+            ZStack {
+                Color.white
 
-            if let image = UIImage(named: currentSlide.imageName) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .ignoresSafeArea()
-            } else {
-                tutorialPlaceholder
+                if let image = UIImage(named: currentSlide.imageName) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(.horizontal, 10)
+                        .padding(.top, 10)
+                        .padding(.bottom, 12)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    tutorialPlaceholder
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            tutorialControlBar
         }
-        .safeAreaInset(edge: .bottom) {
+        .background(Color.white.ignoresSafeArea())
+    }
+
+    private var tutorialControlBar: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 8) {
+                ForEach(slides.indices, id: \.self) { slideIndex in
+                    Circle()
+                        .fill(slideIndex == index ? OVTheme.midnight : OVTheme.line)
+                        .frame(width: 8, height: 8)
+                }
+            }
+
             HStack {
-                Spacer()
+                Button(action: previous) {
+                    HStack(spacing: 7) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .font(OVTheme.heading(15))
+                    .foregroundStyle(index == 0 ? OVTheme.muted.opacity(0.45) : OVTheme.midnight)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(OVTheme.paper)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(index == 0)
+
+                Spacer(minLength: 14)
 
                 Button(action: next) {
                     HStack(spacing: 7) {
-                        Text("Next")
-                        Image(systemName: "chevron.right")
+                        Text(index + 1 >= slides.count ? "Done" : "Next")
+                        Image(systemName: index + 1 >= slides.count ? "checkmark" : "chevron.right")
                     }
                     .font(OVTheme.heading(16))
-                    .foregroundStyle(OVTheme.midnight)
-                    .padding(.horizontal, 18)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 22)
                     .padding(.vertical, 13)
-                    .background(Color.white)
+                    .background(OVTheme.midnight)
                     .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 22)
-            .padding(.bottom, 14)
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 12)
+        .padding(.bottom, 18)
+        .background(.white)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(OVTheme.line)
+                .frame(height: 1)
         }
     }
 
@@ -468,6 +579,13 @@ private struct HubTutorialSlideshowView: View {
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(OVTheme.midnight)
+    }
+
+    private func previous() {
+        guard index > 0 else { return }
+        withAnimation(.easeInOut(duration: 0.22)) {
+            index -= 1
+        }
     }
 
     private func next() {
@@ -499,7 +617,7 @@ private struct PremiumAccountSetupLockView: View {
                         .foregroundStyle(.white)
                         .multilineTextAlignment(.center)
 
-                    Text("Your purchase is ready. Link Apple or Google now so your membership and progress save under your account.")
+                    Text("Your purchase is ready. Sign in with Apple now so your membership and progress save under your account.")
                         .font(OVTheme.body(15))
                         .foregroundStyle(Color.white.opacity(0.86))
                         .multilineTextAlignment(.center)

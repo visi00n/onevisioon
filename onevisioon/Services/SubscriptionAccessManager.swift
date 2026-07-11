@@ -13,7 +13,10 @@ final class SubscriptionAccessManager: ObservableObject {
     static let yearlyProductID = "onevisioon.premium.yearly"
     static let yearlySpecialOfferID = "onevisioon.yearly.special"
     static let yearlySpecialPlanSelection = "yearlySpecial"
-    private var subscriptionProductIDs: [String] { [Self.monthlyProductID, Self.yearlyProductID] }
+    // Keep the retired monthly ID in entitlement checks so existing subscribers
+    // retain access, but only offer the yearly product to new customers.
+    private var entitlementProductIDs: [String] { [Self.monthlyProductID, Self.yearlyProductID] }
+    private var purchasableProductIDs: [String] { [Self.yearlyProductID] }
 
     @Published private(set) var products: [Product] = []
     @Published private(set) var hasActiveSubscription = false
@@ -119,7 +122,7 @@ final class SubscriptionAccessManager: ObservableObject {
         defer { isLoadingProducts = false }
 
         do {
-            products = try await Product.products(for: subscriptionProductIDs)
+            products = try await Product.products(for: purchasableProductIDs)
                 .sorted(by: { productSortRank(for: $0.id) < productSortRank(for: $1.id) })
         } catch {
             errorMessage = "Could not load subscription plans. Try again."
@@ -334,7 +337,7 @@ final class SubscriptionAccessManager: ObservableObject {
 
         for await entitlement in Transaction.currentEntitlements {
             guard case .verified(let transaction) = entitlement else { continue }
-            guard subscriptionProductIDs.contains(transaction.productID) else { continue }
+            guard entitlementProductIDs.contains(transaction.productID) else { continue }
 
             if let expirationDate = transaction.expirationDate {
                 guard expirationDate > now else { continue }

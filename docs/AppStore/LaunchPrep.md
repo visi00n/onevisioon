@@ -8,23 +8,23 @@
 - Secondary category: `Reference`
 
 ## Promotional Text
-Read the King James Bible daily, save notes and highlights, and go deeper chapter by chapter through Bible School.
+Read Scripture daily, then unlock Greek study, notes, Glorify, and guided lessons with One Visioon Premium.
 
 ## Description
 One Visioon is a clean KJV Bible app built for daily reading, serious reflection, and deeper study.
 
-Bible Study gives you:
+The free experience gives you:
 - Full King James Bible access
 - Daily verse and streak tracking
-- Highlights, notes, and saved progress
-- Chapter lessons with reflection
+- Highlights and saved reading progress
 - Optional Discord community access
 
-Bible School gives you:
+One Visioon Premium gives you:
+- Greek Bible, Greek word search, and contextual Greek study
+- Bible notes and saved study insights
+- The complete Glorify experience
 - Deeper chapter-by-chapter teaching
-- Historical context and Scripture connections
-- Guided study paths
-- Chapter quests that test understanding
+- Every available lesson, Freedom path, and chapter quest
 
 20% of Bible School profits are intended to help support people in need.
 
@@ -39,17 +39,17 @@ KJV, Bible, Bible study, King James, Scripture, devotional, Christian, faith, pr
 ## Screenshots To Capture
 - Home with daily verse
 - Full Bible chapter reader
-- Highlight and notes flow
-- Lesson folders
+- Premium Greek study and notes flow
+- Premium lesson folders
 - James lesson deck
-- Bible School paywall / plans
+- One Visioon Premium annual paywall
 - Quest folder
 
 ## Review Notes
-- Explain that `Bible Study` is the self-guided path and `Bible School` is the paid subscription path.
-- Mention that Bible School uses Apple StoreKit 2 auto-renewable subscriptions.
-- Mention the product IDs: `onevisioon.premium.monthly` and `onevisioon.premium.yearly`.
-- Mention that the special yearly offer uses promotional offer ID `onevisioon.yearly.special` and requires Apple's signed promotional-offer flow.
+- Explain that the app opens directly and does not require onboarding or login.
+- Mention that Premium uses one Apple StoreKit 2 annual auto-renewable subscription.
+- Mention the product ID: `onevisioon.premium.yearly`.
+- List the premium entry points: Glorify, Lessons, Greek tools, and Bible Notes.
 - Mention that Discord is optional and opens outside the app.
 - Mention that user progress is stored locally on-device in version 1.0.
 - If App Review needs paid access, provide a sandbox test account or approved StoreKit review flow details.

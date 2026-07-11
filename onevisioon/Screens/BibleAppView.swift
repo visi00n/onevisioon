@@ -3,6 +3,7 @@ import UIKit
 
 struct ScriptureHomeView: View {
     @ObservedObject var store: SoulJourneyStore
+    @EnvironmentObject private var accessManager: SubscriptionAccessManager
     let openGlorifyGifts: () -> Void
     let openProfile: () -> Void
 
@@ -10,6 +11,7 @@ struct ScriptureHomeView: View {
     @State private var showBibleNotesSheet = false
     @State private var dailyVerseSharePayload: DailyVerseSharePayload?
     @State private var streakCalendarDetent: PresentationDetent = .large
+    @State private var premiumFeature: PremiumFeature?
 
     private var continueLocation: BibleLocation {
         store.continueBibleLocation
@@ -21,13 +23,14 @@ struct ScriptureHomeView: View {
 
     private var readingPlan: ReadingRecommendationPlan {
         ReadingRecommendationPlan.build(
-            profile: store.onboardingProfile,
+            profile: .empty,
             lastReadLocation: store.lastReadBibleLocation,
             reflectionStreak: store.currentReflectionStreak,
             date: .now
         )
     }
 
+    // Retained for the currently hidden legacy helper card.
     private var focusedStruggleTopic: StruggleSupportTopic {
         StruggleSupportCatalog.selectedTopic(for: store.onboardingProfile)
     }
@@ -49,7 +52,6 @@ struct ScriptureHomeView: View {
                         quickAccessGrid
                         howToPrayCard
                         iFeelCard
-                        struggleHelperCard
                         whereShouldIReadCard(readingPlan)
                         if let dailyGiftFocus {
                             giftFocusCard(dailyGiftFocus)
@@ -104,6 +106,9 @@ struct ScriptureHomeView: View {
             }
             .sheet(isPresented: $showBibleNotesSheet) {
                 BibleVerseNotesSheet(store: store)
+            }
+            .sheet(item: $premiumFeature) { feature in
+                SubscriptionGateView(accessManager: accessManager, feature: feature)
             }
             .sheet(item: $dailyVerseSharePayload, onDismiss: {
                 cleanupDailyVerseSharePayload()
@@ -338,7 +343,11 @@ struct ScriptureHomeView: View {
             .buttonStyle(.plain)
 
             Button {
-                showBibleNotesSheet = true
+                if accessManager.hasAccess {
+                    showBibleNotesSheet = true
+                } else {
+                    premiumFeature = .bibleNotes
+                }
             } label: {
                 homeQuickAccessTile(
                     eyebrow: "Bible notes",
@@ -696,8 +705,10 @@ struct ScriptureHomeView: View {
 struct FullBibleView: View {
     @ObservedObject var store: SoulJourneyStore
     @Binding var externalTarget: BibleReferenceTarget?
+    @EnvironmentObject private var accessManager: SubscriptionAccessManager
 
     @State private var showGreekSearchSheet = false
+    @State private var premiumFeature: PremiumFeature?
 
     var body: some View {
         NavigationStack {
@@ -707,7 +718,11 @@ struct FullBibleView: View {
                         Menu {
                             ForEach(BibleVersion.allCases) { version in
                                 Button {
-                                    store.setBibleVersion(version)
+                                    if version.isOriginalLanguage && !accessManager.hasAccess {
+                                        premiumFeature = .greekBible
+                                    } else {
+                                        store.setBibleVersion(version)
+                                    }
                                 } label: {
                                     if version == store.selectedBibleVersion {
                                         Label(version.shortName, systemImage: "checkmark")
@@ -733,7 +748,11 @@ struct FullBibleView: View {
 
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         Button {
-                            showGreekSearchSheet = true
+                            if accessManager.hasAccess {
+                                showGreekSearchSheet = true
+                            } else {
+                                premiumFeature = .greekSearch
+                            }
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "text.magnifyingglass")
@@ -759,6 +778,9 @@ struct FullBibleView: View {
                 }
                 .sheet(isPresented: $showGreekSearchSheet) {
                     GreekWordSearchSheet(store: store)
+                }
+                .sheet(item: $premiumFeature) { feature in
+                    SubscriptionGateView(accessManager: accessManager, feature: feature)
                 }
         }
     }
@@ -964,10 +986,12 @@ private struct PrayerTeachingStepCard: View {
 struct BibleLibraryScreen: View {
     @ObservedObject var store: SoulJourneyStore
     @Binding var externalTarget: BibleReferenceTarget?
+    @EnvironmentObject private var accessManager: SubscriptionAccessManager
 
     @State private var query = ""
     @State private var jumpTarget: BibleReferenceTarget?
     @State private var showNotesSheet = false
+    @State private var premiumFeature: PremiumFeature?
     @FocusState private var isSearchFocused: Bool
 
     private let bookColumns = [
@@ -1029,13 +1053,20 @@ struct BibleLibraryScreen: View {
         }
         .overlay(alignment: .bottomTrailing) {
             BibleNotesFloatingButton(noteCount: store.sortedBibleVerseNotes.count) {
-                showNotesSheet = true
+                if accessManager.hasAccess {
+                    showNotesSheet = true
+                } else {
+                    premiumFeature = .bibleNotes
+                }
             }
             .padding(.trailing, 20)
             .padding(.bottom, 18)
         }
         .sheet(isPresented: $showNotesSheet) {
             BibleVerseNotesSheet(store: store)
+        }
+        .sheet(item: $premiumFeature) { feature in
+            SubscriptionGateView(accessManager: accessManager, feature: feature)
         }
         .onAppear {
             consumeExternalTargetIfNeeded()
@@ -1353,6 +1384,7 @@ struct BibleBookDetailView: View {
 struct BibleChapterReaderView: View {
     @ObservedObject var store: SoulJourneyStore
     let target: BibleReferenceTarget
+    @EnvironmentObject private var accessManager: SubscriptionAccessManager
 
     @State private var hasScrolledToInitialVerse = false
     @State private var selectedVerseNumbers: Set<Int> = []
@@ -1363,6 +1395,7 @@ struct BibleChapterReaderView: View {
     @State private var chapterSwipeTarget: BibleReferenceTarget?
     @State private var isHandlingChapterSwipe = false
     @State private var originalLanguagePassage: OriginalLanguageStudyPassage?
+    @State private var premiumFeature: PremiumFeature?
 
     private var chapter: BibleChapter? {
         BibleDataProvider.chapter(
@@ -1469,7 +1502,11 @@ struct BibleChapterReaderView: View {
                     }
                     .overlay(alignment: .bottomTrailing) {
                         BibleNotesFloatingButton(noteCount: store.sortedBibleVerseNotes.count) {
-                            showNotesSheet = true
+                            if accessManager.hasAccess {
+                                showNotesSheet = true
+                            } else {
+                                premiumFeature = .bibleNotes
+                            }
                         }
                         .padding(.trailing, 20)
                         .padding(.bottom, hasActiveSelection ? 112 : 18)
@@ -1506,6 +1543,9 @@ struct BibleChapterReaderView: View {
                     }
                     .sheet(item: $originalLanguagePassage) { passage in
                         OriginalLanguageStudySheet(passage: passage)
+                    }
+                    .sheet(item: $premiumFeature) { feature in
+                        SubscriptionGateView(accessManager: accessManager, feature: feature)
                     }
                 }
             } else {
@@ -1714,7 +1754,11 @@ struct BibleChapterReaderView: View {
                 HStack(spacing: 10) {
                     if OriginalLanguageStudyProvider.supportsOriginalLanguage(for: target.location) {
                         Button {
-                            openOriginalLanguageStudy()
+                            if accessManager.hasAccess {
+                                openOriginalLanguageStudy()
+                            } else {
+                                premiumFeature = .greekStudy
+                            }
                         } label: {
                             originalLanguageActionChip
                         }
@@ -1758,17 +1802,21 @@ struct BibleChapterReaderView: View {
                     }
 
                     Button {
-                        noteDraft = ""
-                        let unhighlightedReferences = selectedVerseReferences.filter {
-                            !store.isBibleVerseHighlighted($0)
+                        if accessManager.hasAccess {
+                            noteDraft = ""
+                            let unhighlightedReferences = selectedVerseReferences.filter {
+                                !store.isBibleVerseHighlighted($0)
+                            }
+                            if !unhighlightedReferences.isEmpty {
+                                store.setBibleVerseHighlight(
+                                    unhighlightedReferences,
+                                    style: selectedHighlightStyle ?? .butter
+                                )
+                            }
+                            showNoteComposerSheet = true
+                        } else {
+                            premiumFeature = .bibleNotes
                         }
-                        if !unhighlightedReferences.isEmpty {
-                            store.setBibleVerseHighlight(
-                                unhighlightedReferences,
-                                style: selectedHighlightStyle ?? .butter
-                            )
-                        }
-                        showNoteComposerSheet = true
                     } label: {
                         verseActionChip(title: "Note", systemImage: "note.text.badge.plus")
                     }
@@ -1934,7 +1982,7 @@ private struct SelectedOriginalLanguageToken: Identifiable, Hashable {
         let selectedText = selectedVerseText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if selectedText.isEmpty {
-            return "In \(verseReference), \(token.surface) is used with the local sense of \(localMeaning). Read \(dictionaryForm) through this verse before widening out to the full gloss range."
+            return "In \(verseReference), \(token.surface) is used with the local sense of \(localMeaning). Read \(dictionaryForm) through this verse and chapter context."
         }
 
         return "In \(verseReference), \(token.surface) is used with the local sense of \(localMeaning). In the selected translation, that sense is anchored by: \(selectedText)"
@@ -1997,7 +2045,7 @@ private struct OriginalLanguageStudySheet: View {
                 .font(OVTheme.heading(14))
                 .foregroundStyle(OVTheme.gold)
 
-            Text("This shows your selected translation first, then the Greek text underneath. Word glosses are study helps, not one-to-one replacements for the full verse meaning.")
+            Text("This shows your selected translation first, then the Greek text underneath. Word meanings are study helps, not one-to-one replacements for the full verse meaning.")
                 .font(OVTheme.body(14))
                 .foregroundStyle(OVTheme.ink.opacity(0.72))
 
@@ -2126,8 +2174,6 @@ private struct OriginalLanguageStudySheet: View {
                 "English used here",
                 token.alignedEnglish.isEmpty ? "English alignment is being expanded for this word." : token.alignedEnglish
             )
-
-            originalLanguageDetailRow("Full gloss range", token.glossSummary)
 
             if !token.lemma.isEmpty {
                 originalLanguageDetailRow("Dictionary form", token.lemma)
@@ -2580,8 +2626,6 @@ private struct GreekWordSearchDetailView: View {
                 originalLanguageDetailRow("Related frequent senses", entry.relatedGlossSummary)
             }
 
-            originalLanguageDetailRow("Full gloss range", entry.glossSummary)
-
             if !entry.lemma.isEmpty {
                 originalLanguageDetailRow("Dictionary form", entry.lemma)
             }
@@ -2711,7 +2755,7 @@ private struct GreekWordSearchDetailView: View {
                     .foregroundStyle(OVTheme.ink.opacity(0.78))
                     .lineSpacing(3)
 
-                Text("In \(occurrence.reference), \(occurrence.surface) is tied to this verse-level sense before you widen out to the full gloss range.")
+                Text("In \(occurrence.reference), \(occurrence.surface) is tied to this verse-level sense. Use the surrounding verse and chapter to confirm the meaning.")
                     .font(OVTheme.body(12))
                     .foregroundStyle(OVTheme.muted)
                     .lineSpacing(2)
@@ -3208,7 +3252,7 @@ private struct LifeSituationGuideLibraryView: View {
     @ObservedObject var store: SoulJourneyStore
 
     private var featuredGuide: LifeSituationGuide {
-        LifeSituationGuide.recommended(for: store.onboardingProfile)
+        LifeSituationGuide.recommended(for: .empty)
     }
 
     var body: some View {
@@ -3229,7 +3273,7 @@ private struct LifeSituationGuideLibraryView: View {
                         NavigationLink {
                             LifeSituationGuideDetailView(store: store, guide: guide)
                         } label: {
-                            guideRow(guide, isFeatured: guide.id == featuredGuide.id)
+                            guideRow(guide, isFeatured: false)
                         }
                         .buttonStyle(.plain)
                     }
@@ -3257,7 +3301,7 @@ private struct LifeSituationGuideLibraryView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(store.onboardingProfile.biggestChallenge.trimmed.isEmpty ? "Recommended start" : "Based on what you told us")
+                        Text("Suggested start")
                             .font(OVTheme.body(11))
                             .foregroundStyle(OVTheme.gold)
 

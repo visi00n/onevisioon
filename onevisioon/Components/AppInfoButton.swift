@@ -6,9 +6,7 @@ struct AppInfoButton: View {
     @State private var showProfile = false
     @State private var isHighlighting = false
 
-    private var shouldHighlight: Bool {
-        store.requiresPostPurchaseAccountLink && !authManager.isSignedIn
-    }
+    private var shouldHighlight: Bool { false }
 
     var body: some View {
         Button {
