@@ -4,7 +4,7 @@
 
 One Visioon offers one auto-renewable subscription through Apple In-App Purchase:
 
-- Product ID: `onevisioon.premium.yearly`
+- Product ID: `onevisioon.premium.yearly.v2`
 - Duration: 1 year
 - Access: Greek Bible and Greek study tools, Bible notes, Glorify, all available lessons, Freedom, and quests
 - Purchase UI: one annual purchase button
@@ -20,7 +20,7 @@ The app still recognizes `onevisioon.premium.monthly` in verified entitlements s
 4. Create one subscription group named `One Visioon Premium`. Use only one group.
 5. Inside that group, create a subscription:
    - Reference name: `One Visioon Premium Annual`
-   - Product ID: `onevisioon.premium.yearly`
+   - Product ID: `onevisioon.premium.yearly.v2`
    - Duration: `1 Year`
 6. Set availability for every storefront where the app will be available.
 7. Set the annual price. To market it as approximately `$3/month` in the US storefront, select an annual US price close to `$35.99/year`. The app calculates the localized monthly equivalent from Apple’s live price; it does not hardcode `$3` for every country.
@@ -35,7 +35,7 @@ The app still recognizes `onevisioon.premium.monthly` in verified entitlements s
    - Privacy Policy and Terms of Use.
 10. Add review notes explaining where every premium entry point is located.
 11. Make sure the subscription status becomes **Ready to Submit**. If it says **Missing Metadata**, open the subscription and complete the highlighted fields.
-12. For the first subscription submission, open the new app version page, scroll to **In-App Purchases and Subscriptions**, choose **Select In-App Purchases or Subscriptions**, and attach `onevisioon.premium.yearly` to the version before submitting the app.
+12. For the first subscription submission, open the new app version page, scroll to **In-App Purchases and Subscriptions**, choose **Select In-App Purchases or Subscriptions**, and attach `onevisioon.premium.yearly.v2` to the version before submitting the app.
 
 Do not create the annual plan as a non-consumable or non-renewing subscription. It must be an **auto-renewable subscription** with a **1 Year** duration.
 
@@ -59,7 +59,7 @@ Do not advertise premium screens as free. Do not put `$3/month` in the App Store
 
 > One Visioon opens directly without onboarding or a required login. Premium is an optional auto-renewable annual subscription purchased with StoreKit 2.
 >
-> Product ID: `onevisioon.premium.yearly`
+> Product ID: `onevisioon.premium.yearly.v2`
 >
 > Premium entry points: tap the Glorify tab, tap the Lessons tab, tap Greek in the Bible tab, choose the Greek Bible version, open Bible Notes, or select verses and tap Greek Study/Note. Each entry point presents the same annual paywall.
 >
@@ -74,7 +74,7 @@ Test with a Sandbox Apple Account or TestFlight:
 1. Fresh install opens Home immediately without onboarding.
 2. Glorify and Lessons present the paywall before content appears.
 3. Greek Search, Greek Bible, Greek Study, and Bible Notes present the paywall.
-4. The paywall loads `onevisioon.premium.yearly` and its localized price.
+4. The paywall loads `onevisioon.premium.yearly.v2` and its localized price.
 5. The monthly equivalent equals the annual StoreKit price divided by 12.
 6. The purchase sheet identifies a one-year auto-renewable subscription.
 7. A successful purchase unlocks all premium entry points without requiring login.

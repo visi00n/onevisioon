@@ -48,7 +48,7 @@ KJV, Bible, Bible study, King James, Scripture, devotional, Christian, faith, pr
 ## Review Notes
 - Explain that the app opens directly and does not require onboarding or login.
 - Mention that Premium uses one Apple StoreKit 2 annual auto-renewable subscription.
-- Mention the product ID: `onevisioon.premium.yearly`.
+- Mention the product ID: `onevisioon.premium.yearly.v2`.
 - List the premium entry points: Glorify, Lessons, Greek tools, and Bible Notes.
 - Mention that Discord is optional and opens outside the app.
 - Mention that user progress is stored locally on-device in version 1.0.

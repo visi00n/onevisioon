@@ -10,7 +10,7 @@ final class SubscriptionAccessManager: ObservableObject {
     private let promotionalOfferSignatureClient: StoreKitPromotionalOfferSignatureClient?
 
     static let monthlyProductID = "onevisioon.premium.monthly"
-    static let yearlyProductID = "onevisioon.premium.yearly"
+    static let yearlyProductID = "onevisioon.premium.yearly.v2"
     static let yearlySpecialOfferID = "onevisioon.yearly.special"
     static let yearlySpecialPlanSelection = "yearlySpecial"
     // Keep the retired monthly ID in entitlement checks so existing subscribers
